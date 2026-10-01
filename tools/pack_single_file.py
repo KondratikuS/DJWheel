@@ -21,7 +21,8 @@ html = re.sub(r'((?:src|href)=")(img/[^"]+)(")', repl, html)
 html = re.sub(r'(url\()(img/[^)]+)(\))', repl, html)
 html = re.sub(r"(= ')(img/[^']+)(')", repl, html)
 # layout.js — внутрь страницы; картинки, которые страница подставляет сама (ручки фейдеров) — в IMG
-html = html.replace('<script src="layout.js"></script>', '<script>' + (APP / 'layout.js').read_text(encoding='utf-8') + '</script>')
+for js in ('layout.js', 'midi.js'):
+    html = html.replace(f'<script src="{js}"></script>', '<script>\n' + (APP / js).read_text(encoding='utf-8') + '</script>')
 imgs = {p.name: data_uri('img/' + p.name) for p in sorted((APP / 'img').glob('*.png'))}
 html = html.replace('const IMG = {};', 'const IMG = ' + json.dumps(imgs) + ';')
 DIST.mkdir(exist_ok=True)
