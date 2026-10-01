@@ -106,15 +106,39 @@ const MIDI = (() => {
     if (wiz) return wiz.feed(port, m);
     const p = profileOf(port.name);
     if (!p) { if (m.on) { openWizard(port.name); if (wiz) wiz.feed(port, m); } return; }   // незнакомая дека подала голос — знакомимся (первое сообщение тоже в зачёт: это часто касание диска)
-    const j = p.jog[m.key];
-    if (j && m.cc) return turn(decode(j, m.val, absState[port.name + m.key] || (absState[port.name + m.key] = {})) * j.deg);
+    let j = p.jog[m.key];
+    if (!j && sibling(p, m, port.name)) { j = p.jog[m.key]; keep(port, p); }
+    if (j && m.cc) { if (cand) cand.ticks++; return turn(decode(j, m.val, absState[port.name + m.key] || (absState[port.name + m.key] = {})) * j.deg); }
     if (m.key === p.touch) return touch(m.on);
     if (p.fader && m.cc && m.key === p.fader.key) return setMix((m.val - p.fader.min) / Math.max(1, p.fader.max - p.fader.min));
-    if (!m.on) return;
-    const i = p.pads.indexOf(m.key); if (i >= 0) return pad(i);
-    if (m.key === (p.play || p.action)) play(p);          // action — поле из первых профилей
-    else if (m.key === p.cue) cue();
+    const i = p.pads.indexOf(m.key); if (i >= 0) { if (m.on) pad(i); return; }
+    if (m.key === (p.play || p.action)) { if (m.on) play(p); return; }          // action — поле из первых профилей
+    if (m.key === p.cue) { if (m.on) cue(); return; }
+    if (learnTouch(p, m)) { keep(port, p); touch(false); }
   }
+
+  /* У джога один энкодер, но несколько «голосов»: обод, верх с касанием, верх без vinyl — это соседние CC на том же канале.
+     Откалибровали один (например, крутили за обод) — остальные признаём сами и даём им те же параметры.
+     Чтобы не принять за колесо соседний регулятор, смотрим первые шесть значений: у энкодера это мелкие шаги. */
+  const pend = {}, rejected = {}; let cand = null;
+  function sibling(p, m, tag) {
+    if (!m.cc || p.jog[m.key] || rejected[tag + m.key] || (p.fader && p.fader.key === m.key)) return null;
+    const k = Object.keys(p.jog).find(k => p.jog[k].enc !== 'abs' && k.slice(0, 2) === m.key.slice(0, 2) && Math.abs(parseInt(k.slice(3), 16) - parseInt(m.key.slice(3), 16)) <= 3);
+    if (!k) return null;
+    const v = pend[tag + m.key] = pend[tag + m.key] || []; v.push(m.val); if (v.length < 6) return null;
+    delete pend[tag + m.key];
+    const small = p.jog[k].enc === 'offset' ? v.every(x => Math.abs(x - 64) <= 24) : v.every(x => x <= 24 || x >= 104);
+    if (!small) { rejected[tag + m.key] = 1; return null; }
+    return p.jog[m.key] = { ...p.jog[k] };
+  }
+  // касание не привязано: нота, которая началась до вращения и кончилась после него, — это датчик касания
+  function learnTouch(p, m) {
+    if (p.touch || m.cc) return false;
+    if (m.on) { cand = { key: m.key, ticks: 0 }; return false; }
+    const ok = cand && cand.key === m.key && cand.ticks >= 3; cand = null;
+    if (ok) p.touch = m.key; return ok;
+  }
+  const keep = (port, p) => { if (profiles[port.name] === p) save(); };
 
   /* ── мастер знакомства ── */
   const css = `#midiWiz{position:absolute;inset:0;z-index:30;background:rgba(6,7,9,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:6%;gap:1.1em;font-size:calc(var(--h)*.03)}
@@ -146,8 +170,8 @@ const MIDI = (() => {
       q('.dev').textContent = name || 'жду сигнал с деки…'; q('.step').textContent = s === 'done' ? 'ГОТОВО' : `ШАГ ${si + 1} / ${steps.length - 1}`; q('.got').textContent = '';
       q('[data-a=back]').style.visibility = si ? 'visible' : 'hidden'; q('[data-a=skip]').style.display = s === 'done' ? 'none' : '';
       q('[data-a=skip]').textContent = s === 'check' ? 'ДАЛЬШЕ' : 'ПРОПУСТИТЬ'; q('.tune').style.display = s === 'check' ? '' : 'none';
-      if (s === 'wheel') { q('h2').textContent = 'КОЛЕСО'; q('.ask').textContent = `Сделай ${TURNS} полных оборота по часовой стрелке и убери руку. Точность не нужна — возьмём среднее.`; }
-      else if (s === 'check') { acc = 0; q('h2').textContent = 'ПРОВЕРКА'; q('.ask').textContent = 'Поверни диск на четверть оборота — здесь должно быть около 90°. Если заметно больше или меньше, поправь кнопками.'; q('.got').textContent = '0°';
+      if (s === 'wheel') { q('h2').textContent = 'КОЛЕСО'; q('.ask').textContent = `Положи руку на диск сверху, сделай ${TURNS} полных оборота по часовой стрелке и убери руку. Точность не нужна — возьмём среднее.`; }
+      else if (s === 'check') { acc = 0; q('h2').textContent = 'ПРОВЕРКА'; q('.ask').textContent = 'Поверни диск на четверть оборота — сначала взявшись за верх, потом за обод. Здесь должно быть около 90°. Если заметно больше или меньше, поправь кнопками.'; q('.got').textContent = '0°';
         if (!Object.keys(p.jog).length) return next(); }
       else if (s.startsWith('pad')) { const i = +s[3]; q('h2').textContent = 'ПАД ' + PAD_NAMES[i]; q('.ask').textContent = `Нажми кнопку на деке, которая будет играть ${PAD_NAMES[i]}.`; }
       else if (s === 'play') { q('h2').textContent = 'КНОПКА PLAY'; q('.ask').textContent = 'Нажми PLAY на деке — этой кнопкой запускается опрос.'; }
@@ -158,6 +182,7 @@ const MIDI = (() => {
         if (name) { profiles[name] = p; save(); } mark(); timer = setTimeout(close, 2500); }
     }
     const next = () => { si = Math.min(si + 1, steps.length - 1); show(); };
+    const note = t => { if (!q('.ask').textContent.includes(t)) q('.ask').textContent += ` (${t})`; };
     function finishWheel() {
       const held = Object.values(notes).some(n => n.on && !n.off);        // рука ещё на диске — ждём, но не вечно
       if (held && !finishWheel.waited) { finishWheel.waited = 1; q('.got').textContent += '  — убери руку с диска'; timer = setTimeout(finishWheel, 4000); return; }
@@ -190,8 +215,10 @@ const MIDI = (() => {
         if (m.cc) { (cc[m.key] = cc[m.key] || []).push(m.val); q('.got').textContent = `${m.key.toUpperCase()} … ${Object.values(cc).reduce((a, x) => a + x.length, 0)}`; clearTimeout(timer); timer = setTimeout(finishWheel, 2000); }
         else { const n = notes[m.key] = notes[m.key] || {}; if (m.on) { n.on = 1; n.off = 0; n.seenOn = 1; } else { n.off = 1; if (n.seenOn) n.both = 1; } }   // руку между оборотами перехватывают — шаг закрывает только тишина
       } else if (s === 'check') {
+        if (sibling(p, m, 'wiz')) note('второй канал колеса добавлен');
+        if (learnTouch(p, m)) note('датчик касания найден');
         const j = p.jog[m.key]; if (m.key === p.touch && m.on) acc = 0;
-        if (j && m.cc) { const now = performance.now(); if (!p.touch && now - accT > 1500) acc = 0; accT = now; acc += decode(j, m.val, chk) * j.deg; q('.got').textContent = Math.round(acc) + '°'; }
+        if (j && m.cc) { if (cand) cand.ticks++; const now = performance.now(); if (!p.touch && now - accT > 1500) acc = 0; accT = now; acc += decode(j, m.val, chk) * j.deg; q('.got').textContent = Math.round(acc) + '°'; }
       } else if (s === 'fader') {                       // берём CC с самым широким ходом
         if (!m.cc || p.jog[m.key]) return; const r = cc[m.key] = cc[m.key] || { min: 127, max: 0 }; r.min = Math.min(r.min, m.val); r.max = Math.max(r.max, m.val);
         const best = Object.keys(cc).sort((a, b) => (cc[b].max - cc[b].min) - (cc[a].max - cc[a].min))[0], span = cc[best].max - cc[best].min;
