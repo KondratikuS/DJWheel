@@ -128,7 +128,7 @@
   /* ── результат ── */
   #result {
     position: absolute; inset: 0; z-index: 4; display: none; flex-direction: column;
-    align-items: center; justify-content: flex-start; padding: 15% 30% 0;
+    align-items: center; justify-content: flex-start; padding: 13.5% 30% 0;
     background: rgba(8,9,11,.74); backdrop-filter: blur(2px); text-align: center; pointer-events: none;
     opacity: 0; transition: opacity .8s;
   }
@@ -223,7 +223,7 @@ const DATA = {
   ],
   // у профиля: track и track2 — два сведённых трека финала (URL), фейдер деки переливает между ними; null — синтез
   bgTrack: null,            // тихий фон на вопросах (URL); null — синтетический пад
-  samples: { kick: null, hat: null, clap: null, stab: null },   // URL семплов; null — синтез
+  samples: { kick: null, hat: null, clap: null, snare: null, tom: null, crash: null, horn: null, laser: null },   // URL семплов; null — синтез
   dwellMs: 2000,            // задержался на секции — выбор
   settleMs: 600,            // пауза после выбора перед следующим вопросом
   flickVel: 14,             // градусов за кадр при отпускании — резкий рывок, включается рулетка
@@ -253,7 +253,8 @@ $('#fakeRim').style.display = 'none';
 
 /* ───────── РАСКЛАДКА ПО ФОТО ПУЛЬТА (layout.js из tools/build_bg.py) ───────── */
 const L = typeof LAYOUT !== 'undefined' ? LAYOUT : null;
-const PADS = [['kick', 'KICK', '#2fd85a'], ['hat', 'HAT', '#e8e14a'], ['clap', 'CLAP', '#ff7a3b'], ['snare', 'SNARE', '#4a9bff']];
+const PADS = [['kick', 'KICK', '#2fd85a'], ['hat', 'HAT', '#e8e14a'], ['clap', 'CLAP', '#ff7a3b'], ['snare', 'SNARE', '#4a9bff'],
+              ['tom', 'TOM', '#c77dff'], ['crash', 'CRASH', '#e8e8ea'], ['horn', 'HORN', '#ff4d6d'], ['laser', 'LASER', '#3de0d0']];
 const leds = [];                // столбики светодиодов: {els сверху вниз, v}
 const IMG = {};                 // при сборке в один файл pack_single_file.py кладёт сюда data-URI картинок
 function addPad(i, x, y, w, h) {
@@ -263,7 +264,7 @@ function addPad(i, x, y, w, h) {
   b.textContent = PADS[i][1]; $('#frame').appendChild(b);
 }
 // финал: пады по очереди вспыхивают на месте, потом разъезжаются крупно под описание
-const PAD_TARGET = { y: 73, w: 7.6, h: 13.5, xs: [36.5, 45.5, 54.5, 63.5], font: .026 };   // центр группы — 50 %
+const PAD_TARGET = { ys: [70.5, 80.8], w: 5.2, h: 8.8, xs: [39.8, 46.6, 53.4, 60.2], font: .018 };   // два ряда по четыре, центр группы — 50 %
 function padsHome() {
   $$('.pad').forEach(b => {
     const [x, y, w, h] = JSON.parse(b.dataset.home);
@@ -277,7 +278,7 @@ function padsShowcase() {
     b.classList.add('show', 'hit'); setTimeout(() => b.classList.remove('hit'), 350);
   });
   setTimeout(() => pads.forEach((b, i) => {
-    b.style.left = PAD_TARGET.xs[i] + '%'; b.style.top = PAD_TARGET.y + '%'; b.style.width = PAD_TARGET.w + '%'; b.style.height = PAD_TARGET.h + '%';
+    b.style.left = PAD_TARGET.xs[i % 4] + '%'; b.style.top = PAD_TARGET.ys[i >> 2] + '%'; b.style.width = PAD_TARGET.w + '%'; b.style.height = PAD_TARGET.h + '%';
     b.style.fontSize = `calc(var(--h) * ${PAD_TARGET.font})`;
   }), 150);
 }
@@ -293,7 +294,7 @@ if (L) {
   deck.style.left = L.jog.x * 100 + '%'; deck.style.top = L.jog.y * 100 + '%';
   deck.style.width = deck.style.height = `calc(var(--h) * ${size.toFixed(4)})`;
   if (L.jog.platter) $('#cpPlatter circle').setAttribute('r', Math.round(470 * L.jog.platter));
-  L.pads.forEach((p, i) => addPad(i, p.x * 100, p.y * 100, p.w * 100, p.h * 100));
+  L.pads.slice(0, PADS.length).forEach((p, i) => addPad(i, p.x * 100, p.y * 100, p.w * 100, p.h * 100));
   L.leds.forEach(col => {
     const els = col.map(([x, y], k) => {
       const e = document.createElement('div'); e.className = 'led'; e.style.setProperty('--c', L.led.colors[k]);
@@ -304,7 +305,7 @@ if (L) {
   });
   setLeds(null);
 } else {
-  PADS.forEach((_, i) => addPad(i, i < 2 ? 12 : 88, i % 2 ? 68 : 46, 9, 16));
+  PADS.forEach((_, i) => addPad(i, 38 + (i % 4) * 8, i < 4 ? 84 : 95, 6, 9));
 }
 
 // бороздки на диске
@@ -533,6 +534,26 @@ function playSample(name, vol = 1) {
     const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
     s.buffer = b; f.type = name === 'hat' ? 'highpass' : 'bandpass'; f.frequency.value = name === 'hat' ? 7000 : 1800; f.Q.value = name === 'hat' ? 1 : .8;
     g.gain.value = name === 'hat' ? .5 : .9; s.connect(f).connect(g).connect(out); s.start(t);
+  } else if (name === 'tom') {              // том: тон с быстрым спадом высоты
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(230, t); o.frequency.exponentialRampToValueAtTime(95, t + .28);
+    g.gain.setValueAtTime(1, t); g.gain.exponentialRampToValueAtTime(.001, t + .45); o.connect(g).connect(out); o.start(t); o.stop(t + .5);
+  } else if (name === 'crash') {            // тарелка: длинный шум с верхами
+    const b = ac.createBuffer(1, ac.sampleRate * 1.4, ac.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    s.buffer = b; f.type = 'highpass'; f.frequency.value = 4500; g.gain.value = .55; s.connect(f).connect(g).connect(out); s.start(t);
+  } else if (name === 'horn') {             // эйр-хорн: одна нота — три расстроенные пилы аккордом
+    [[0, .6]].forEach(([at, len]) => [233, 311, 349].forEach((fr, k) => {
+      const o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter(), s0 = t + at;
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(fr * .97, s0); o.frequency.linearRampToValueAtTime(fr, s0 + .04); o.detune.value = (k - 1) * 9;
+      f.type = 'lowpass'; f.frequency.value = 2400; g.gain.setValueAtTime(0, s0); g.gain.linearRampToValueAtTime(.22, s0 + .015); g.gain.setValueAtTime(.22, s0 + len - .04); g.gain.linearRampToValueAtTime(0, s0 + len);
+      o.connect(f).connect(g).connect(out); o.start(s0); o.stop(s0 + len + .02);
+    }));
+  } else if (name === 'laser') {            // лазер: свип сверху вниз
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'square'; o.frequency.setValueAtTime(3200, t); o.frequency.exponentialRampToValueAtTime(140, t + .32);
+    g.gain.setValueAtTime(.55, t); g.gain.exponentialRampToValueAtTime(.001, t + .34); o.connect(g).connect(out); o.start(t); o.stop(t + .36);
   } else {                                  // snare: тон ~190 Гц + шумовой хвост
     const o = ac.createOscillator(), g = ac.createGain();
     o.frequency.setValueAtTime(190, t); o.frequency.exponentialRampToValueAtTime(120, t + .1);

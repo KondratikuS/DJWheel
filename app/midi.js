@@ -6,13 +6,13 @@
    Работает в Chrome / Edge (ПК, Android) по https или localhost; в Safari и на iOS Web MIDI нет. */
 const MIDI = (() => {
   const KEY = 'djw-midi-profiles-v1';
-  const PAD_NAMES = ['KICK', 'HAT', 'CLAP', 'SNARE'];
+  const PAD_NAMES = ['KICK', 'HAT', 'CLAP', 'SNARE', 'TOM', 'CRASH', 'HORN', 'LASER'];
   // коды левого дека DDJ-FLX6 — из маппинга Mixxx (7200 тиков на оборот, значение − 64)
   const flx6Jog = { enc: 'offset', sign: 1, deg: 0.05 };
   const KNOWN = [
     { match: /DDJ-FLX6/i, title: 'Pioneer DDJ-FLX6',
       profile: { jog: { 'b0:21': flx6Jog, 'b0:22': flx6Jog, 'b0:23': flx6Jog }, touch: null,
-                 pads: ['97:00', '97:01', '97:02', '97:03'], play: '90:0b', cue: '90:0c', fader: { key: 'b6:1f', min: 0, max: 127 } } },
+                 pads: ['97:00', '97:01', '97:02', '97:03', '97:04', '97:05', '97:06', '97:07'], play: '90:0b', cue: '90:0c', fader: { key: 'b6:1f', min: 0, max: 127 } } },
   ];
   // idleMs — без датчика касания столько тишины = «отпустил»; minMove° — меньше не считается (случайный толчок);
   // spinVel (градусов за кадр) и spinMove° — рулетка только от настоящего раскрута, быстрый поворот к секции её не включает
@@ -108,7 +108,7 @@ const MIDI = (() => {
     $('#frame').appendChild(el);
     const q = s => el.querySelector(s);
     const p = { jog: {}, touch: null, pads: [], play: null, cue: null, fader: null };
-    const steps = ['wheel', 'check', 'pad0', 'pad1', 'pad2', 'pad3', 'play', 'cue', 'fader', 'done'];
+    const steps = ['wheel', 'check', 'pad0', 'pad1', 'pad2', 'pad3', 'pad4', 'pad5', 'pad6', 'pad7', 'play', 'cue', 'fader', 'done'];
     let si = 0, cc = {}, notes = {}, timer = 0, acc = 0, accT = 0; const chk = {};
     const used = () => [...Object.keys(p.jog), p.touch, ...p.pads, p.play, p.cue, p.fader && p.fader.key].filter(Boolean);
     function show() {
@@ -124,7 +124,7 @@ const MIDI = (() => {
       else if (s === 'cue') { q('h2').textContent = 'КНОПКА CUE'; q('.ask').textContent = 'Нажми CUE на деке — этой кнопкой на финале возвращаемся в начало. Если пропустить, назад будет делать PLAY.'; }
       else if (s === 'fader') { q('h2').textContent = 'ФЕЙДЕР МИКСА'; q('.ask').textContent = 'Проведи фейдер микса от края до края — на финале он переливает один трек в другой. Потом «Дальше».'; q('[data-a=skip]').textContent = 'ДАЛЬШЕ'; }
       else { q('h2').textContent = 'ДЕКА ПОДКЛЮЧЕНА'; const n = Object.keys(p.jog).length;
-        q('.ask').textContent = `Колесо: ${n ? 'есть' : 'нет'}${p.touch ? ', с датчиком касания' : ''}. Пады: ${p.pads.filter(Boolean).length} из 4. PLAY: ${p.play ? 'есть' : 'нет'}. CUE: ${p.cue ? 'есть' : 'нет'}. Фейдер: ${p.fader ? 'есть' : 'нет'}.`;
+        q('.ask').textContent = `Колесо: ${n ? 'есть' : 'нет'}${p.touch ? ', с датчиком касания' : ''}. Пады: ${p.pads.filter(Boolean).length} из 8. PLAY: ${p.play ? 'есть' : 'нет'}. CUE: ${p.cue ? 'есть' : 'нет'}. Фейдер: ${p.fader ? 'есть' : 'нет'}.`;
         if (name) { profiles[name] = p; save(); } mark(); timer = setTimeout(close, 2500); }
     }
     const next = () => { si = Math.min(si + 1, steps.length - 1); show(); };
