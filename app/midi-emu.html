@@ -12,7 +12,6 @@
   #jog { width: 340px; height: 340px; border-radius: 50%; position: relative; touch-action: none; cursor: grab;
          background: repeating-conic-gradient(#3a3d44 0 8deg, #26282c 8deg 16deg); box-shadow: 0 0 0 3px #0a0a0b; }
   #top { position: absolute; inset: 44px; border-radius: 50%; background: radial-gradient(circle at 50% 38%, #2f3136, #0d0e10 75%); }
-  #top::after { content: ""; position: absolute; left: 50%; top: 6%; width: 6px; height: 22%; margin-left: -3px; border-radius: 3px; background: #2fd85a; }
   #top.touch { box-shadow: inset 0 0 0 3px #2fd85a; }
   .grid { display: grid; grid-template-columns: repeat(4, 74px); gap: 10px; }
   .pad, .btn { height: 74px; border-radius: 6px; border: 2px solid #3d7dff; background: #05080f; color: #9db9ff; font-weight: 700; cursor: pointer; }
@@ -38,7 +37,7 @@
   <div>
     <div class="grid" id="pads"></div>
     <div style="display:flex; gap:10px; margin-top:14px; align-items:center"><button class="btn" data-k="cue">CUE</button><button class="btn" data-k="play">PLAY</button>
-      <button id="rev" style="margin-left:14px; padding:.6em 1em; border-radius:8px; border:1px solid #3d4047; background:#2b2d31; color:#fff; cursor:pointer">Ровно один оборот ↻</button></div>
+      <button id="rev" style="margin-left:14px; padding:.6em 1em; border-radius:8px; border:1px solid #3d4047; background:#2b2d31; color:#fff; cursor:pointer">Ровно три оборота ↻</button></div>
     <p id="deg" style="font-family:monospace; color:#e8e14a; margin:10px 0 0">0°</p>
     <p><small>Серединой диска — с касанием (как рука на платтере), ободом — без касания.</small></p>
   </div>
@@ -89,17 +88,17 @@ jog.onpointermove = e => {
     else { pos = (pos + c + 1280) % 128; send([...drag.key, pos], true); }
   }
 };
-// для мастера: ровно 360° по часовой за 1,5 с, с касанием, если оно есть
+// для мастера: ровно три оборота по часовой, с касанием, если оно есть
 $('#rev').onclick = async () => {
-  const key = mode.top, total = mode.tpr; let left = total; if (mode.touch) send([...mode.touch, 0x7F]);
-  const per = Math.max(1, Math.round(total / 90));
+  const key = mode.top, total = mode.tpr * 3; let left = total; if (mode.touch) send([...mode.touch, 0x7F]);
+  const per = Math.max(1, Math.round(total / 200)), stepMax = Math.max(1, Math.min(12, Math.round(mode.tpr / 300)));   // мелкими шагами, как рука
   while (left > 0) {
-    let n = Math.min(per, left); left -= n; angle += n * 360 / total; jog.style.transform = `rotate(${angle}deg)`;
-    while (n) { const c = Math.min(63, n); n -= c;
+    let n = Math.min(per, left); left -= n; angle += n * 360 / mode.tpr; jog.style.transform = `rotate(${angle}deg)`;
+    while (n) { const c = Math.min(stepMax, n); n -= c;
       if (mode.enc === 'offset') send([...key, 64 + c], true); else if (mode.enc === 'twos') send([...key, c], true); else { pos = (pos + c) % 128; send([...key, pos], true); } }
     await new Promise(r => setTimeout(r, 16));
   }
-  if (mode.touch) send([...mode.touch, 0x00]); log(`оборот: ${total} тиков (${hex(key)})`);
+  if (mode.touch) send([...mode.touch, 0x00]); log(`три оборота: ${total} тиков (${hex(key)})`);
 };
 jog.onpointerup = jog.onpointercancel = () => {
   if (!drag) return; if (drag.touch) { send([...mode.touch, 0x00]); top_.classList.remove('touch'); }

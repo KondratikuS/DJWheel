@@ -17,6 +17,7 @@ const MIDI = (() => {
   // idleMs — без датчика касания столько тишины = «отпустил»; minMove° — меньше не считается (случайный толчок);
   // spinVel (градусов за кадр) и spinMove° — рулетка только от настоящего раскрута, быстрый поворот к секции её не включает
   const CFG = { idleMs: 1000, minMove: 3, spinVel: 30, spinMove: 150 };
+  const TURNS = 3;           // в мастере крутим несколько оборотов и берём среднее: ровно 360° рукой не сделать
 
   let access = null, profiles = {}, wiz = null;
   try { profiles = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) {}
@@ -98,18 +99,22 @@ const MIDI = (() => {
     // открыт вручную — имени нет: привяжемся к порту, с которого придёт первый сигнал
     const el = document.createElement('div'); el.id = 'midiWiz';
     el.innerHTML = `<div class="dev"></div><div class="step"></div><h2></h2><div class="ask"></div><div class="got"></div>
+      <div class="row tune"><button data-a="less">− МЕДЛЕННЕЕ</button><button data-a="more">БЫСТРЕЕ +</button></div>
       <div class="row"><button data-a="back">НАЗАД</button><button data-a="skip">ПРОПУСТИТЬ</button><button data-a="close">ЗАКРЫТЬ</button></div>`;
     $('#frame').appendChild(el);
     const q = s => el.querySelector(s);
     const p = { jog: {}, touch: null, pads: [], action: null };
-    const steps = ['wheel', 'pad0', 'pad1', 'pad2', 'pad3', 'action', 'done'];
-    let si = 0, cc = {}, notes = {}, timer = 0;
+    const steps = ['wheel', 'check', 'pad0', 'pad1', 'pad2', 'pad3', 'action', 'done'];
+    let si = 0, cc = {}, notes = {}, timer = 0, acc = 0, accT = 0; const chk = {};
     const used = () => [...Object.keys(p.jog), p.touch, ...p.pads, p.action].filter(Boolean);
     function show() {
       const s = steps[si]; clearTimeout(timer); cc = {}; notes = {};
       q('.dev').textContent = name || 'жду сигнал с деки…'; q('.step').textContent = s === 'done' ? 'ГОТОВО' : `ШАГ ${si + 1} / ${steps.length - 1}`; q('.got').textContent = '';
       q('[data-a=back]').style.visibility = si ? 'visible' : 'hidden'; q('[data-a=skip]').style.display = s === 'done' ? 'none' : '';
-      if (s === 'wheel') { q('h2').textContent = 'КОЛЕСО'; q('.ask').textContent = 'Положи руку на диск, сделай ровно один полный оборот по часовой стрелке и убери руку.'; }
+      q('[data-a=skip]').textContent = s === 'check' ? 'ДАЛЬШЕ' : 'ПРОПУСТИТЬ'; q('.tune').style.display = s === 'check' ? '' : 'none';
+      if (s === 'wheel') { q('h2').textContent = 'КОЛЕСО'; q('.ask').textContent = `Сделай ${TURNS} полных оборота по часовой стрелке и убери руку. Точность не нужна — возьмём среднее.`; }
+      else if (s === 'check') { acc = 0; q('h2').textContent = 'ПРОВЕРКА'; q('.ask').textContent = 'Поверни диск на четверть оборота — здесь должно быть около 90°. Если заметно больше или меньше, поправь кнопками.'; q('.got').textContent = '0°';
+        if (!Object.keys(p.jog).length) return next(); }
       else if (s.startsWith('pad')) { const i = +s[3]; q('h2').textContent = 'ПАД ' + PAD_NAMES[i]; q('.ask').textContent = `Нажми кнопку на деке, которая будет играть ${PAD_NAMES[i]}.`; }
       else if (s === 'action') { q('h2').textContent = 'СТАРТ / НАЗАД'; q('.ask').textContent = 'Нажми кнопку, которой запускать опрос и возвращаться в начало (например PLAY). Можно пропустить — останется экран.'; }
       else { q('h2').textContent = 'ДЕКА ПОДКЛЮЧЕНА'; const n = Object.keys(p.jog).length;
@@ -124,24 +129,33 @@ const MIDI = (() => {
       let found = 0, info = [];
       for (const key in cc) {
         const v = cc[key]; if (v.length < 8) continue;
-        // кодировка шага: вокруг 64 — «64 ± n»; у краёв 0/127 — дополнительный код; иначе абсолютная позиция
-        const share = f => v.filter(f).length / v.length;
-        const enc = share(x => Math.abs(x - 64) <= 24) > .85 ? 'offset' : share(x => x <= 24 || x >= 104) > .85 ? 'twos' : 'abs';
-        const st = {}, sum = v.reduce((a, x) => a + decode({ enc, sign: 1 }, x, st), 0);
-        if (Math.abs(sum) < 20) continue;
-        p.jog[key] = { enc, sign: sum < 0 ? -1 : 1, deg: 360 / Math.abs(sum) }; found++; info.push(`${key.toUpperCase()} · ${Math.abs(sum)} тиков на оборот`);
+        // кодировка шага: пробуем все три («64 ± n», дополнительный код, абсолютная позиция). Оборот в одну
+        // сторону должен давать шаги одного знака; из таких берём ту, где самые мелкие шаги мельче: на медленных
+        // участках настоящая кодировка даёт ±1..3, а ошибочная — числа около 60
+        let best = null;
+        for (const enc of ['offset', 'twos', 'abs']) {
+          const st = {}, d = v.map(x => decode({ enc, sign: 1 }, x, st)), sum = d.reduce((a, x) => a + x, 0), abs = d.reduce((a, x) => a + Math.abs(x), 0);
+          if (abs < 24 || Math.abs(sum) / abs < .9) continue;
+          const mags = d.map(Math.abs).filter(Boolean).sort((x, y) => x - y), low = mags[Math.floor(mags.length * .1)] || 0;
+          if (!best || low < best.low) best = { enc, sum, low };
+        }
+        if (!best) continue;
+        const { enc, sum } = best;
+        p.jog[key] = { enc, sign: sum < 0 ? -1 : 1, deg: 360 * TURNS / Math.abs(sum) }; found++; info.push(`${key.toUpperCase()} · около ${Math.round(Math.abs(sum) / TURNS)} тиков на оборот`);
       }
-      if (!found) { q('.got').textContent = 'Вращение не распознано — попробуй ещё раз, полный оборот.'; cc = {}; return; }
-      const t = Object.keys(notes).find(k => notes[k].on && notes[k].off); if (t) p.touch = t;
+      if (!found) { q('.got').textContent = 'Вращение не распознано — попробуй ещё раз, в одну сторону.'; cc = {}; notes = {}; return; }
+      const t = Object.keys(notes).find(k => notes[k].both); if (t) p.touch = t;
       q('.got').textContent = info.join('   ') + (t ? `   касание ${t.toUpperCase()}` : '   касание не найдено'); timer = setTimeout(next, 1800);
     }
     wiz = { feed(port, m) {
       if (!name) { name = port.name; q('.dev').textContent = name; }
       if (port.name !== name) return; const s = steps[si];
       if (s === 'wheel') {
-        if (m.cc) { (cc[m.key] = cc[m.key] || []).push(m.val); q('.got').textContent = `${m.key.toUpperCase()} … ${Object.values(cc).reduce((a, x) => a + x.length, 0)}`; clearTimeout(timer); timer = setTimeout(finishWheel, 1200); }
-        else { const n = notes[m.key] = notes[m.key] || {}; m.on ? n.on = 1 : n.off = 1;
-          if (!m.on && Object.keys(cc).length) { clearTimeout(timer); timer = setTimeout(finishWheel, 300); } }   // убрал руку — оборот закончен
+        if (m.cc) { (cc[m.key] = cc[m.key] || []).push(m.val); q('.got').textContent = `${m.key.toUpperCase()} … ${Object.values(cc).reduce((a, x) => a + x.length, 0)}`; clearTimeout(timer); timer = setTimeout(finishWheel, 2000); }
+        else { const n = notes[m.key] = notes[m.key] || {}; if (m.on) { n.on = 1; n.off = 0; n.seenOn = 1; } else { n.off = 1; if (n.seenOn) n.both = 1; } }   // руку между оборотами перехватывают — шаг закрывает только тишина
+      } else if (s === 'check') {
+        const j = p.jog[m.key]; if (m.key === p.touch && m.on) acc = 0;
+        if (j && m.cc) { const now = performance.now(); if (!p.touch && now - accT > 1500) acc = 0; accT = now; acc += decode(j, m.val, chk) * j.deg; q('.got').textContent = Math.round(acc) + '°'; }
       } else if ((s.startsWith('pad') || s === 'action') && m.on && !used().includes(m.key)) {
         if (m.cc && m.val < 64) return;
         if (s === 'action') p.action = m.key; else p.pads[+s[3]] = m.key;
@@ -153,6 +167,7 @@ const MIDI = (() => {
       const a = e.target.dataset && e.target.dataset.a; if (!a) return;
       if (a === 'close') close();
       else if (a === 'skip') { const s = steps[si]; if (s.startsWith('pad')) p.pads[+s[3]] = null; next(); }
+      else if (a === 'less' || a === 'more') { const k = a === 'more' ? 1.1 : 1 / 1.1; for (const key in p.jog) p.jog[key].deg *= k; acc *= k; q('.got').textContent = Math.round(acc) + '°'; }
       else if (a === 'back') { si = Math.max(0, si - 1); const s = steps[si]; if (s === 'wheel') { p.jog = {}; p.touch = null; } else if (s.startsWith('pad')) p.pads[+s[3]] = null; else if (s === 'action') p.action = null; show(); }
     });
     show();
