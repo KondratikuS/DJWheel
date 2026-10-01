@@ -95,8 +95,7 @@ const MIDI = (() => {
 
   function openWizard(name) {
     if (wiz) return;
-    name = name || (access && [...access.inputs.values()].map(p => p.name)[0]);
-    if (!name) return;
+    // открыт вручную — имени нет: привяжемся к порту, с которого придёт первый сигнал
     const el = document.createElement('div'); el.id = 'midiWiz';
     el.innerHTML = `<div class="dev"></div><div class="step"></div><h2></h2><div class="ask"></div><div class="got"></div>
       <div class="row"><button data-a="back">НАЗАД</button><button data-a="skip">ПРОПУСТИТЬ</button><button data-a="close">ЗАКРЫТЬ</button></div>`;
@@ -108,14 +107,14 @@ const MIDI = (() => {
     const used = () => [...Object.keys(p.jog), p.touch, ...p.pads, p.action].filter(Boolean);
     function show() {
       const s = steps[si]; clearTimeout(timer); cc = {}; notes = {};
-      q('.dev').textContent = name; q('.step').textContent = s === 'done' ? 'ГОТОВО' : `ШАГ ${si + 1} / ${steps.length - 1}`; q('.got').textContent = '';
+      q('.dev').textContent = name || 'жду сигнал с деки…'; q('.step').textContent = s === 'done' ? 'ГОТОВО' : `ШАГ ${si + 1} / ${steps.length - 1}`; q('.got').textContent = '';
       q('[data-a=back]').style.visibility = si ? 'visible' : 'hidden'; q('[data-a=skip]').style.display = s === 'done' ? 'none' : '';
       if (s === 'wheel') { q('h2').textContent = 'КОЛЕСО'; q('.ask').textContent = 'Положи руку на диск, сделай ровно один полный оборот по часовой стрелке и убери руку.'; }
       else if (s.startsWith('pad')) { const i = +s[3]; q('h2').textContent = 'ПАД ' + PAD_NAMES[i]; q('.ask').textContent = `Нажми кнопку на деке, которая будет играть ${PAD_NAMES[i]}.`; }
       else if (s === 'action') { q('h2').textContent = 'СТАРТ / НАЗАД'; q('.ask').textContent = 'Нажми кнопку, которой запускать опрос и возвращаться в начало (например PLAY). Можно пропустить — останется экран.'; }
       else { q('h2').textContent = 'ДЕКА ПОДКЛЮЧЕНА'; const n = Object.keys(p.jog).length;
         q('.ask').textContent = `Колесо: ${n ? 'есть' : 'нет'}${p.touch ? ', с датчиком касания' : ''}. Пады: ${p.pads.filter(Boolean).length} из 4. Кнопка: ${p.action ? 'есть' : 'нет'}.`;
-        profiles[name] = p; save(); mark(); timer = setTimeout(close, 2500); }
+        if (name) { profiles[name] = p; save(); } mark(); timer = setTimeout(close, 2500); }
     }
     const next = () => { si = Math.min(si + 1, steps.length - 1); show(); };
     function finishWheel() {
@@ -137,6 +136,7 @@ const MIDI = (() => {
       q('.got').textContent = info.join('   ') + (t ? `   касание ${t.toUpperCase()}` : '   касание не найдено'); timer = setTimeout(next, 1800);
     }
     wiz = { feed(port, m) {
+      if (!name) { name = port.name; q('.dev').textContent = name; }
       if (port.name !== name) return; const s = steps[si];
       if (s === 'wheel') {
         if (m.cc) { (cc[m.key] = cc[m.key] || []).push(m.val); q('.got').textContent = `${m.key.toUpperCase()} … ${Object.values(cc).reduce((a, x) => a + x.length, 0)}`; clearTimeout(timer); timer = setTimeout(finishWheel, 1200); }
