@@ -117,10 +117,10 @@ const MIDI = (() => {
       else if (s === 'check') { acc = 0; q('h2').textContent = 'ПРОВЕРКА'; q('.ask').textContent = 'Поверни диск на четверть оборота — здесь должно быть около 90°. Если заметно больше или меньше, поправь кнопками.'; q('.got').textContent = '0°';
         if (!Object.keys(p.jog).length) return next(); }
       else if (s.startsWith('pad')) { const i = +s[3]; q('h2').textContent = 'ПАД ' + PAD_NAMES[i]; q('.ask').textContent = `Нажми кнопку на деке, которая будет играть ${PAD_NAMES[i]}.`; }
-      else if (s === 'action') { q('h2').textContent = 'СТАРТ / НАЗАД'; q('.ask').textContent = 'Нажми кнопку, которой запускать опрос и возвращаться в начало (например PLAY). Можно пропустить — останется экран.'; }
+      else if (s === 'action') { q('h2').textContent = 'КНОПКА PLAY'; q('.ask').textContent = 'Нажми PLAY на деке. Этой кнопкой запускается опрос, а на финале — возврат в начало.'; }
       else if (s === 'fader') { q('h2').textContent = 'ФЕЙДЕР МИКСА'; q('.ask').textContent = 'Проведи фейдер микса от края до края — на финале он переливает один трек в другой. Потом «Дальше».'; q('[data-a=skip]').textContent = 'ДАЛЬШЕ'; }
       else { q('h2').textContent = 'ДЕКА ПОДКЛЮЧЕНА'; const n = Object.keys(p.jog).length;
-        q('.ask').textContent = `Колесо: ${n ? 'есть' : 'нет'}${p.touch ? ', с датчиком касания' : ''}. Пады: ${p.pads.filter(Boolean).length} из 4. Кнопка: ${p.action ? 'есть' : 'нет'}. Фейдер: ${p.fader ? 'есть' : 'нет'}.`;
+        q('.ask').textContent = `Колесо: ${n ? 'есть' : 'нет'}${p.touch ? ', с датчиком касания' : ''}. Пады: ${p.pads.filter(Boolean).length} из 4. PLAY: ${p.action ? 'есть' : 'нет'}. Фейдер: ${p.fader ? 'есть' : 'нет'}.`;
         if (name) { profiles[name] = p; save(); } mark(); timer = setTimeout(close, 2500); }
     }
     const next = () => { si = Math.min(si + 1, steps.length - 1); show(); };
