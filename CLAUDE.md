@@ -115,4 +115,17 @@ localhost). Джог → вращение колеса, касание/отпу�
 джог бок `B0 21`, платтер `B0 22` (vinyl) / `B0 23`, пады Hot Cue `97 00..07`,
 PLAY `90 0B`, CUE `90 0C`. Готового эмулятора DDJ в сети нет — тест без деки: виртуальный
 loopback-порт (встроенный Windows MIDI Services либо loopMIDI) + своя страница-эмулятор,
-шлющая эти же коды. На этом ПК служба `midisrv` есть, инструментов и loopMIDI нет.
+шлющая эти же коды.
+
+**Стенд MIDI на этом ПК (01.10.2026).** Поставлен пакет `Microsoft.MIDI.SDK`
+(winget, Windows MIDI Services Runtime and Tools 1.0.16-rc.3.7) в
+`C:\Program Files\Windows MIDI Services\Tools`. Петля: `tools/midi_loop.cmd` →
+`midi loopback create --name-a "DJ Wheel A" --name-b "DJ Wheel B"` (что послано в A,
+приходит из B и наоборот; MIDI 1.0-приложения видят по два входа и выхода). Она
+временная — до перезапуска службы MIDI или ПК; постоянную делает приложение MIDI Settings.
+`midi basic-loopback create` на этой сборке падает с ошибкой — не использовать.
+Консольные `midi ... monitor / send-message` требуют настоящей консоли (из скрипта с
+перенаправлением вывода не работают) — проверка петли своя: `tools/midi_loop_check.py`
+(winmm через ctypes, без библиотек), прошла: `B0 22 41`, `B0 22 3F`, `97 00 7F` дошли.
+Встроенный браузер Claude Web MIDI не разрешает (NotAllowedError) — проверять в Chrome:
+`app/midi-test.html` (список портов, монитор входов, тестовая посылка в петлю).

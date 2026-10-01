@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>MIDI test</title>
+<style>
+  body { margin: 0; padding: 24px; background: #121316; color: #e8e8ea; font: 16px/1.5 'Segoe UI', sans-serif; }
+  button { font: inherit; padding: .5em 1.2em; border-radius: 8px; border: 1px solid #3d4047; background: #2b2d31; color: #fff; cursor: pointer; margin-right: 8px; }
+  pre { background: #0c0d0f; border: 1px solid #2b2d31; border-radius: 8px; padding: 12px; min-height: 12em; white-space: pre-wrap; }
+  .ok { color: #2fd85a; } .bad { color: #ff6b6b; }
+</style>
+</head>
+<body>
+<h2>Проверка Web MIDI</h2>
+<p>Открывать в Chrome или Edge по адресу <code>http://localhost:8090/midi-test.html</code>. Нажми «Подключить» и разреши доступ к MIDI.</p>
+<button id="go">Подключить</button><button id="ping" disabled>Послать тест в петлю</button>
+<pre id="log"></pre>
+<script>
+const log = (t, c) => { const s = document.createElement('span'); if (c) s.className = c; s.textContent = t + '\n'; document.getElementById('log').appendChild(s); };
+const hex = d => [...d].map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+let acc;
+document.getElementById('go').onclick = async () => {
+  if (!navigator.requestMIDIAccess) return log('В этом браузере нет Web MIDI', 'bad');
+  try { acc = await navigator.requestMIDIAccess(); } catch (e) { return log('Доступ не дан: ' + e.message, 'bad'); }
+  const list = () => {
+    log('Входы:  ' + ([...acc.inputs.values()].map(p => p.name).join(', ') || '—'));
+    log('Выходы: ' + ([...acc.outputs.values()].map(p => p.name).join(', ') || '—'));
+  };
+  list(); acc.onstatechange = e => log(`порт ${e.port.name}: ${e.port.state}`);
+  for (const p of acc.inputs.values()) p.onmidimessage = e => log(`← ${p.name}: ${hex(e.data)}`, 'ok');
+  document.getElementById('ping').disabled = false;
+  log('Слушаю все входы. Крути джог / жми пады — сообщения появятся здесь.');
+};
+document.getElementById('ping').onclick = () => {
+  const out = [...acc.outputs.values()].find(p => / A$/.test(p.name)) || [...acc.outputs.values()].pop();
+  if (!out) return log('Нет выходов', 'bad');
+  [[0xB0, 0x22, 0x41], [0x97, 0x00, 0x7F], [0x97, 0x00, 0x00]].forEach((m, i) => setTimeout(() => { out.send(m); log(`→ ${out.name}: ${hex(m)}`); }, i * 150));
+};
+</script>
+</body>
+</html>
