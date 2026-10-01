@@ -2,35 +2,40 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>Эмулятор деки</title>
 <style>
-  body { margin: 0; padding: 16px 20px; background: #121316; color: #e8e8ea; font: 15px/1.45 'Segoe UI', sans-serif; user-select: none; }
-  h2 { margin: 0 0 6px; } select, button { font: inherit; }
-  .bar { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; color: #9aa0aa; }
-  select { background: #2b2d31; color: #fff; border: 1px solid #3d4047; border-radius: 6px; padding: 4px 8px; }
-  #rev { padding: .35em .9em; border-radius: 8px; border: 1px solid #3d4047; background: #2b2d31; color: #fff; cursor: pointer; }
-  #degv { font-family: monospace; color: #e8e14a; min-width: 4em; }
+  /* дека занимает всё окно: --s — её ширина, от неё считаются все размеры */
+  :root { --bar: 46px; --log: 96px; --s: min(100vw - 24px, (100vh - var(--bar) - var(--log) - 36px) / 1.36); }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+  body { background: #121316; color: #e8e8ea; font: 15px/1.4 'Segoe UI', sans-serif; user-select: none; touch-action: none;
+         display: grid; grid-template-rows: var(--bar) 1fr var(--log); justify-items: center; align-items: center; gap: 6px; padding: 6px 12px; }
+  select { font: inherit; background: #2b2d31; color: #fff; border: 1px solid #3d4047; border-radius: 6px; padding: 4px 8px; max-width: 46vw; }
+  .bar { display: flex; gap: 14px; align-items: center; color: #9aa0aa; width: 100%; white-space: nowrap; overflow: hidden; }
+  #degv { font-family: monospace; color: #e8e14a; margin-left: auto; }
 
-  /* дека: джог сверху, CUE и PLAY по бокам, пады под джогом, фейдер микса внизу */
-  #deck { width: 560px; padding: 22px 24px 20px; border-radius: 14px; background: linear-gradient(#2c2d30, #1f2023); border: 1px solid #3a3c41;
-          display: grid; grid-template-columns: 84px 1fr 84px; grid-template-areas: "cue jog play" "pads pads pads" "fader fader fader"; gap: 18px 10px; align-items: end; }
-  #jog { grid-area: jog; justify-self: center; width: 340px; height: 340px; border-radius: 50%; position: relative; touch-action: none; cursor: grab;
+  /* джог сверху, CUE и PLAY по бокам, пады под джогом, фейдер микса внизу */
+  #deck { width: var(--s); height: calc(var(--s) * 1.36); padding: calc(var(--s) * .04); border-radius: calc(var(--s) * .025);
+          background: linear-gradient(#2c2d30, #1f2023); border: 1px solid #3a3c41;
+          display: grid; grid-template-columns: 15% 1fr 15%; grid-template-rows: auto auto 1fr auto;
+          grid-template-areas: "jog jog jog" "cue . play" "pads pads pads" "fader fader fader"; gap: calc(var(--s) * .03) 0; align-items: center; }
+  #jog { grid-area: jog; justify-self: center; width: calc(var(--s) * .68); height: calc(var(--s) * .68); border-radius: 50%; position: relative; cursor: grab;
          background: repeating-conic-gradient(#3a3d44 0 8deg, #26282c 8deg 16deg); box-shadow: 0 0 0 3px #0a0a0b; }
-  #top { position: absolute; inset: 44px; border-radius: 50%; background: radial-gradient(circle at 50% 38%, #2f3136, #0d0e10 75%); }
+  #top { position: absolute; inset: 13%; border-radius: 50%; background: radial-gradient(circle at 50% 38%, #2f3136, #0d0e10 75%); }
   #top.touch { box-shadow: inset 0 0 0 3px #2fd85a; }
-  .btn { width: 84px; height: 84px; border-radius: 50%; border: 3px solid #3d4047; background: radial-gradient(circle at 50% 35%, #33353a, #101113 75%); color: #ddd; font-weight: 700; cursor: pointer; }
+  .btn { width: 100%; aspect-ratio: 1; border-radius: 50%; border: 3px solid #3d4047; background: radial-gradient(circle at 50% 35%, #33353a, #101113 75%);
+         font: 700 calc(var(--s) * .034) 'Segoe UI', sans-serif; cursor: pointer; margin-top: calc(var(--s) * -.17); }
   .btn[data-k=cue] { grid-area: cue; color: #ff9a3b; } .btn[data-k=play] { grid-area: play; color: #2fd85a; }
-  #pads { grid-area: pads; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 0 60px; }
-  .pad { height: 62px; border-radius: 6px; border: 2px solid #3d7dff; background: #05080f; color: #9db9ff; font-weight: 700; cursor: pointer; }
+  #pads { grid-area: pads; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: 1fr 1fr; gap: calc(var(--s) * .022); height: 100%; padding: 0 3%; }
+  .pad { border-radius: 6px; border: 2px solid #3d7dff; background: #05080f; color: #9db9ff; font: 700 calc(var(--s) * .036) 'Segoe UI', sans-serif; cursor: pointer; }
   .pad:active, .btn:active { background: #2fd85a; color: #06120a; }
-  #faderBox { grid-area: fader; display: flex; align-items: center; gap: 12px; padding: 0 60px; color: #9aa0aa; font-size: 13px; }
-  #fader { flex: 1; accent-color: #d8d8dc; height: 28px; }
-  pre { background: #0c0d0f; border: 1px solid #2b2d31; border-radius: 8px; padding: 10px; height: 7em; overflow: auto; margin-top: 14px; font-size: 13px; width: 588px; }
-  small { color: #7d838d; }
+  #faderBox { grid-area: fader; display: flex; align-items: center; gap: 14px; padding: 0 3%; color: #9aa0aa; font-size: calc(var(--s) * .03); }
+  #fader { flex: 1; accent-color: #d8d8dc; height: calc(var(--s) * .06); touch-action: pan-x; }
+  pre { width: 100%; height: 100%; margin: 0; background: #0c0d0f; border: 1px solid #2b2d31; border-radius: 8px; padding: 8px 10px; overflow: auto; font-size: 12px; }
 </style>
 </head>
 <body>
-<h2>Эмулятор деки</h2>
 <div class="bar">
   <span>Выход: <select id="out"></select></span>
   <span>Дека: <select id="mode">
@@ -38,19 +43,19 @@
     <option value="alt">незнакомая (другие коды и кодировка)</option>
     <option value="abs">незнакомая (абсолютный энкодер, без касания)</option>
   </select></span>
-  <button id="rev">Ровно три оборота ↻</button><span id="degv">0°</span>
+  <span id="degv">0°</span>
 </div>
 <div id="deck">
-  <button class="btn" data-k="cue">CUE</button>
   <div id="jog"><div id="top"></div></div>
+  <button class="btn" data-k="cue">CUE</button>
   <button class="btn" data-k="play">PLAY</button>
   <div id="pads"></div>
   <div id="faderBox"><span>A</span><input id="fader" type="range" min="0" max="127" value="64"><span>B</span></div>
 </div>
-<small>Серединой диска — с касанием (рука на платтере), ободом — без. Игру открыть в соседнем окне: <code>http://localhost:8090/</code></small>
 <pre id="log"></pre>
 <script>
 // status, data1; jog: enc offset (64±n) | twos (1..63 / 127..65) | abs (позиция 0..127), tpr — тиков на оборот
+// серединой диска — с касанием (рука на платтере), ободом — без
 const MODES = {
   flx6: { top: [0xB0, 0x22], side: [0xB0, 0x21], enc: 'offset', tpr: 7200, touch: [0x90, 0x36], pads: i => [0x97, i], play: [0x90, 0x0B], cue: [0x90, 0x0C], fader: [0xB6, 0x1F] },
   alt:  { top: [0xB1, 0x10], side: [0xB1, 0x11], enc: 'twos',   tpr: 600,  touch: [0x91, 0x20], pads: i => [0x99, 0x24 + i], play: [0x91, 0x05], cue: [0x91, 0x06], fader: [0xB1, 0x40] },
@@ -95,17 +100,6 @@ jog.onpointermove = e => {
   angle += d; turned += d; jog.style.transform = `rotate(${angle}deg)`; $('#degv').textContent = Math.round(turned) + '°';
   frac += d * mode.tpr / 360; let n = Math.trunc(frac); frac -= n; sent += n;
   while (n) { const c = Math.max(-63, Math.min(63, n)); n -= c; tick(drag.key, c); }
-};
-// для мастера: ровно три оборота по часовой мелкими шагами, с касанием, если оно есть
-$('#rev').onclick = async () => {
-  const key = mode.top, total = mode.tpr * 3; let left = total; if (mode.touch) send([...mode.touch, 0x7F]);
-  const per = Math.max(1, Math.round(total / 200)), stepMax = Math.max(1, Math.min(12, Math.round(mode.tpr / 300)));
-  while (left > 0) {
-    let n = Math.min(per, left); left -= n; angle += n * 360 / mode.tpr; jog.style.transform = `rotate(${angle}deg)`;
-    while (n) { const c = Math.min(stepMax, n); n -= c; tick(key, c); }
-    await new Promise(r => setTimeout(r, 16));
-  }
-  if (mode.touch) send([...mode.touch, 0x00]); log(`три оборота: ${total} тиков (${hex(key)})`);
 };
 jog.onpointerup = jog.onpointercancel = () => {
   if (!drag) return; if (drag.touch) { send([...mode.touch, 0x00]); top_.classList.remove('touch'); }
