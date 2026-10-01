@@ -1,0 +1,4 @@
+dist/
+tools/out/
+ref/parts/
+__pycache__/
