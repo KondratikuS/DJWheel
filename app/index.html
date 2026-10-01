@@ -221,6 +221,7 @@ const DATA = {
     { name: 'THE CROWD READER', text: 'Описание-заглушка профиля C. Ты чувствуешь зал раньше, чем он сам понимает, чего хочет.', track: null },
     { name: 'THE EXPERIMENTER', text: 'Описание-заглушка профиля D. Жанры для тебя не правила, а сырьё.', track: null },
   ],
+  // у профиля: track и track2 — два сведённых трека финала (URL), фейдер деки переливает между ними; null — синтез
   bgTrack: null,            // тихий фон на вопросах (URL); null — синтетический пад
   samples: { kick: null, hat: null, clap: null, stab: null },   // URL семплов; null — синтез
   dwellMs: 2000,            // задержался на секции — выбор
@@ -444,7 +445,7 @@ function showResult() {
     platter.style.transition = 'none'; platter.classList.add('spin');
     padsShowcase();
     setTimeout(() => {
-      display.classList.add('eq'); startMusic(p.track);
+      display.classList.add('eq'); startMusic(p.track, p.track2);
       $('#rTitle').textContent = p.name; $('#rText').textContent = '';
       result.classList.add('show');
       typeText($('#rText'), p.text);
@@ -467,7 +468,8 @@ $$('.pad').forEach(p => {
 });
 
 /* ───────── ЗВУК + ЭКВАЛАЙЗЕР ───────── */
-let ac, analyser, master, bgGain, trackGain, synth = null, bgSynth = null, media = null, bgMedia = null, eqRaf = 0;
+let ac, analyser, master, bgGain, trackGain, gainA, gainB, synth = null, synthB = null, bgSynth = null, media = null, mediaB = null, bgMedia = null, eqRaf = 0;
+let mix = .5;                  // микс двух треков финала: 0 — только A, 1 — только B (фейдер деки)
 function ensureAudio() {
   if (ac) { ac.resume(); return; }
   ac = new (window.AudioContext || window.webkitAudioContext)();
@@ -475,6 +477,7 @@ function ensureAudio() {
   master = ac.createGain(); master.connect(analyser); analyser.connect(ac.destination);
   bgGain = ac.createGain(); bgGain.connect(ac.destination);       // фон мимо анализатора: эквалайзер только для трека
   trackGain = ac.createGain(); trackGain.connect(master);
+  gainA = ac.createGain(); gainB = ac.createGain(); gainA.connect(trackGain); gainB.connect(trackGain); setMix(mix);
 }
 function ramp(g, v, t) { g.gain.cancelScheduledValues(ac.currentTime); g.gain.setValueAtTime(g.gain.value, ac.currentTime); g.gain.linearRampToValueAtTime(v, ac.currentTime + t); }
 function startBg() {
@@ -484,16 +487,27 @@ function startBg() {
 }
 function fadeBg() { if (!ac) return; ramp(bgGain, 0, 2); setTimeout(stopBg, 2100); }
 function stopBg() { if (bgMedia) { bgMedia.pause(); bgMedia = null; } if (bgSynth) { bgSynth.stop(); bgSynth = null; } }
-function startMusic(url) {
+// финал: два сведённых трека стартуют разом, фейдер микса переливает один в другой (равная мощность)
+function setMix(x) {
+  mix = Math.max(0, Math.min(1, x)); if (!ac) return;
+  gainA.gain.setTargetAtTime(Math.cos(mix * Math.PI / 2), ac.currentTime, .02);
+  gainB.gain.setTargetAtTime(Math.sin(mix * Math.PI / 2), ac.currentTime, .02);
+}
+function startMusic(url, url2) {
   trackGain.gain.setValueAtTime(0, ac.currentTime); ramp(trackGain, .8, 1.5);
-  if (url) { media = new Audio(url); media.loop = true; media.crossOrigin = 'anonymous'; ac.createMediaElementSource(media).connect(trackGain); media.play(); }
-  else synth = makeBeat(trackGain);
+  const t0 = ac.currentTime + .08;
+  const el = (u, out) => { const m = new Audio(u); m.loop = true; m.crossOrigin = 'anonymous'; ac.createMediaElementSource(m).connect(out); return m; };
+  if (url) media = el(url, gainA); else synth = makeBeat(gainA, 0, t0);
+  if (url2) mediaB = el(url2, gainB); else synthB = makeBeat(gainB, 1, t0);
+  [media, mediaB].forEach(m => m && m.play());
   drawEq();
 }
 function stopAll() {
   cancelAnimationFrame(eqRaf); stopBg();
   if (media) { media.pause(); media = null; }
+  if (mediaB) { mediaB.pause(); mediaB = null; }
   if (synth) { synth.stop(); synth = null; }
+  if (synthB) { synthB.stop(); synthB = null; }
 }
 
 // одноразовые семплы (синтез, пока нет файлов)
@@ -557,9 +571,28 @@ function makePad(out) {
   return { stop: () => { clearTimeout(timer); oscs.forEach(o => o.o.stop()); lfo.stop(); } };
 }
 // заглушка трека: простой техно-луп из осцилляторов, чтобы эквалайзеру было что показывать
-function makeBeat(out) {
+// variant 0 — трек A (бочка, хэт, бас), variant 1 — трек B (бочка, хлопок, открытый хэт, арпеджио); общий t0 держит их в такт
+function makeBeat(out, variant = 0, t0 = ac.currentTime + .05) {
   const bpm = 126, beat = 60 / bpm, notes = [41.2, 41.2, 49, 55, 41.2, 41.2, 36.7, 49];
-  let n = 0, t = ac.currentTime + .05, timer;
+  let n = 0, t = t0, timer;
+  const noise = (len, pow) => { const b = ac.createBuffer(1, Math.round(ac.sampleRate * len), ac.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, pow); const s = ac.createBufferSource(); s.buffer = b; return s; };
+  const tickB = () => {
+    while (t < ac.currentTime + .3) {
+      const step = n % 16;
+      if (step % 4 === 0) { const k = ac.createOscillator(), kg = ac.createGain();
+        k.frequency.setValueAtTime(140, t); k.frequency.exponentialRampToValueAtTime(45, t + .1);
+        kg.gain.setValueAtTime(.8, t); kg.gain.exponentialRampToValueAtTime(.001, t + .2); k.connect(kg).connect(out); k.start(t); k.stop(t + .25); }
+      if (step % 8 === 4) { const c = noise(.2, 2.5), f = ac.createBiquadFilter(), g = ac.createGain(); f.type = 'bandpass'; f.frequency.value = 1700; g.gain.value = .7; c.connect(f).connect(g).connect(out); c.start(t); }
+      if (step % 4 === 2) { const h = noise(.14, 2), f = ac.createBiquadFilter(), g = ac.createGain(); f.type = 'highpass'; f.frequency.value = 8000; g.gain.value = .3; h.connect(f).connect(g).connect(out); h.start(t); }
+      const o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter(), arp = [0, 7, 12, 15, 12, 7, 3, 7];
+      o.type = 'square'; o.frequency.value = notes[Math.floor(step / 8) * 4 % 8] * 8 * Math.pow(2, arp[step % 8] / 12); f.type = 'lowpass'; f.frequency.setValueAtTime(2600, t); f.frequency.exponentialRampToValueAtTime(600, t + .15);
+      g.gain.setValueAtTime(.12, t); g.gain.exponentialRampToValueAtTime(.001, t + .16); o.connect(f).connect(g).connect(out); o.start(t); o.stop(t + .18);
+      t += beat / 4; n++;
+    }
+    timer = setTimeout(tickB, 100);
+  };
+  if (variant === 1) { tickB(); return { stop: () => clearTimeout(timer) }; }
   const tick = () => {
     while (t < ac.currentTime + .3) {
       const step = n % 16;
