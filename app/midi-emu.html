@@ -37,7 +37,9 @@
   <div id="jog"><div id="top"></div></div>
   <div>
     <div class="grid" id="pads"></div>
-    <div style="display:flex; gap:10px; margin-top:14px"><button class="btn" data-k="cue">CUE</button><button class="btn" data-k="play">PLAY</button></div>
+    <div style="display:flex; gap:10px; margin-top:14px; align-items:center"><button class="btn" data-k="cue">CUE</button><button class="btn" data-k="play">PLAY</button>
+      <button id="rev" style="margin-left:14px; padding:.6em 1em; border-radius:8px; border:1px solid #3d4047; background:#2b2d31; color:#fff; cursor:pointer">Ровно один оборот ↻</button></div>
+    <p id="deg" style="font-family:monospace; color:#e8e14a; margin:10px 0 0">0°</p>
     <p><small>Серединой диска — с касанием (как рука на платтере), ободом — без касания.</small></p>
   </div>
 </div>
@@ -70,15 +72,15 @@ for (let i = 0; i < 8; i++) {
 document.querySelectorAll('.btn').forEach(b => { b.onpointerdown = () => send([...mode[b.dataset.k], 0x7F]); b.onpointerup = () => send([...mode[b.dataset.k], 0x00]); });
 
 // джог: угол пальца → тики
-const jog = $('#jog'), top_ = $('#top'); let drag = null, angle = 0, frac = 0, sent = 0;
+const jog = $('#jog'), top_ = $('#top'); let drag = null, angle = 0, frac = 0, sent = 0, turned = 0;
 const ang = e => { const r = jog.getBoundingClientRect(); return Math.atan2(e.clientY - r.top - r.height / 2, e.clientX - r.left - r.width / 2) * 180 / Math.PI; };
 jog.onpointerdown = e => {
   const onTop = e.target === top_; drag = { a: ang(e), key: onTop ? mode.top : mode.side, touch: onTop && mode.touch };
-  jog.setPointerCapture(e.pointerId); if (drag.touch) { send([...mode.touch, 0x7F]); top_.classList.add('touch'); }
+  turned = 0; jog.setPointerCapture(e.pointerId); if (drag.touch) { send([...mode.touch, 0x7F]); top_.classList.add('touch'); }
 };
 jog.onpointermove = e => {
   if (!drag) return; const a = ang(e); let d = a - drag.a; if (d > 180) d -= 360; if (d < -180) d += 360; drag.a = a;
-  angle += d; jog.style.transform = `rotate(${angle}deg)`;
+  angle += d; turned += d; jog.style.transform = `rotate(${angle}deg)`; $('#deg').textContent = Math.round(turned) + '°';
   frac += d * mode.tpr / 360; let n = Math.trunc(frac); frac -= n; sent += n;
   while (n) {
     const c = Math.max(-63, Math.min(63, n)); n -= c;
@@ -86,6 +88,18 @@ jog.onpointermove = e => {
     else if (mode.enc === 'twos') send([...drag.key, c > 0 ? c : 128 + c], true);
     else { pos = (pos + c + 1280) % 128; send([...drag.key, pos], true); }
   }
+};
+// для мастера: ровно 360° по часовой за 1,5 с, с касанием, если оно есть
+$('#rev').onclick = async () => {
+  const key = mode.top, total = mode.tpr; let left = total; if (mode.touch) send([...mode.touch, 0x7F]);
+  const per = Math.max(1, Math.round(total / 90));
+  while (left > 0) {
+    let n = Math.min(per, left); left -= n; angle += n * 360 / total; jog.style.transform = `rotate(${angle}deg)`;
+    while (n) { const c = Math.min(63, n); n -= c;
+      if (mode.enc === 'offset') send([...key, 64 + c], true); else if (mode.enc === 'twos') send([...key, c], true); else { pos = (pos + c) % 128; send([...key, pos], true); } }
+    await new Promise(r => setTimeout(r, 16));
+  }
+  if (mode.touch) send([...mode.touch, 0x00]); log(`оборот: ${total} тиков (${hex(key)})`);
 };
 jog.onpointerup = jog.onpointercancel = () => {
   if (!drag) return; if (drag.touch) { send([...mode.touch, 0x00]); top_.classList.remove('touch'); }

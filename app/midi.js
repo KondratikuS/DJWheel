@@ -14,7 +14,9 @@ const MIDI = (() => {
       profile: { jog: { 'b0:21': flx6Jog, 'b0:22': flx6Jog, 'b0:23': flx6Jog }, touch: null,
                  pads: ['97:00', '97:01', '97:02', '97:03'], action: '90:0b' } },
   ];
-  const CFG = { idleMs: 600, minMove: 3 };      // без датчика касания: столько тишины = «отпустил»; меньше minMove° — случайный толчок
+  // idleMs — без датчика касания столько тишины = «отпустил»; minMove° — меньше не считается (случайный толчок);
+  // spinVel (градусов за кадр) и spinMove° — рулетка только от настоящего раскрута, быстрый поворот к секции её не включает
+  const CFG = { idleMs: 1000, minMove: 3, spinVel: 30, spinMove: 150 };
 
   let access = null, profiles = {}, wiz = null;
   try { profiles = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) {}
@@ -45,7 +47,7 @@ const MIDI = (() => {
     setRot(clamp(rot + deg)); highlight(); g.moved += Math.abs(deg);
     // скорость окнами по 50 мс, в тех же единицах, что у пальца: градусы за кадр
     if (now - g.t > 50) { const v = g.win / (now - g.t) * 16; g.win = 0; g.t = now;
-      if (Math.abs(v) >= DATA.flickVel && g.moved > 20) { end(); return roulette(); } }
+      if (Math.abs(v) >= CFG.spinVel && g.moved > CFG.spinMove) { end(); return roulette(); } }
     g.win += deg;
     clearTimeout(idle); idle = setTimeout(release, touching ? DATA.dwellMs : CFG.idleMs);
   }
@@ -63,7 +65,7 @@ const MIDI = (() => {
     playSample(b.dataset.s); b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 120);
   }
   function action() {
-    if (state === 'start') btn.click();
+    if (state === 'start') { btn.click(); setTimeout(soundHint, 400); }
     else if (state === 'result' && back.classList.contains('show')) showStart();
   }
 
@@ -71,7 +73,7 @@ const MIDI = (() => {
     const m = parse(data); if (!m) return;
     if (wiz) return wiz.feed(port, m);
     const p = profileOf(port.name);
-    if (!p) { if (m.on) openWizard(port.name); return; }       // незнакомая дека подала голос — знакомимся
+    if (!p) { if (m.on) { openWizard(port.name); if (wiz) wiz.feed(port, m); } return; }   // незнакомая дека подала голос — знакомимся (первое сообщение тоже в зачёт: это часто касание диска)
     const j = p.jog[m.key];
     if (j && m.cc) return turn(decode(j, m.val, absState[port.name + m.key] || (absState[port.name + m.key] = {})) * j.deg);
     if (m.key === p.touch) return touch(m.on);
@@ -86,7 +88,8 @@ const MIDI = (() => {
 #midiWiz .step{color:#2fd85a;font-family:'Share Tech Mono',monospace;letter-spacing:.2em;font-size:.8em}#midiWiz .ask{font-size:1.25em;max-width:28em;line-height:1.35}
 #midiWiz .got{min-height:1.4em;color:#e8e14a;font-family:'Share Tech Mono',monospace;font-size:.85em}#midiWiz .row{display:flex;gap:.8em;margin-top:.6em}
 #midiWiz button{font:700 .8em 'Montserrat',sans-serif;letter-spacing:.12em;padding:.7em 1.6em;border-radius:999px;border:2px solid #3d4047;background:linear-gradient(#2b2d31,#151618);color:#eee;cursor:pointer}
-#midiDot{position:absolute;right:1%;bottom:1.5%;z-index:7;width:calc(var(--h)*.012);height:calc(var(--h)*.012);border-radius:50%;background:#2fd85a;box-shadow:0 0 8px #2fd85a;opacity:0;transition:opacity .4s;pointer-events:none}#midiDot.on{opacity:.8}`;
+#midiDot{position:absolute;right:1%;bottom:1.5%;z-index:7;width:calc(var(--h)*.012);height:calc(var(--h)*.012);border-radius:50%;background:#2fd85a;box-shadow:0 0 8px #2fd85a;opacity:0;transition:opacity .4s;pointer-events:none}#midiDot.on{opacity:.8}
+#soundHint{position:absolute;left:50%;bottom:4%;transform:translateX(-50%);z-index:8;padding:.6em 1.6em;border-radius:999px;background:rgba(232,225,74,.95);color:#111;font:700 calc(var(--h)*.022) 'Montserrat',sans-serif;letter-spacing:.12em;display:none;pointer-events:none}#soundHint.on{display:block}`;
   document.head.appendChild(Object.assign(document.createElement('style'), { textContent: css }));
   const dot = Object.assign(document.createElement('div'), { id: 'midiDot' }); $('#frame').appendChild(dot);
 
@@ -116,6 +119,9 @@ const MIDI = (() => {
     }
     const next = () => { si = Math.min(si + 1, steps.length - 1); show(); };
     function finishWheel() {
+      const held = Object.values(notes).some(n => n.on && !n.off);        // рука ещё на диске — ждём, но не вечно
+      if (held && !finishWheel.waited) { finishWheel.waited = 1; q('.got').textContent += '  — убери руку с диска'; timer = setTimeout(finishWheel, 4000); return; }
+      finishWheel.waited = 0;
       let found = 0, info = [];
       for (const key in cc) {
         const v = cc[key]; if (v.length < 8) continue;
@@ -134,7 +140,8 @@ const MIDI = (() => {
       if (port.name !== name) return; const s = steps[si];
       if (s === 'wheel') {
         if (m.cc) { (cc[m.key] = cc[m.key] || []).push(m.val); q('.got').textContent = `${m.key.toUpperCase()} … ${Object.values(cc).reduce((a, x) => a + x.length, 0)}`; clearTimeout(timer); timer = setTimeout(finishWheel, 1200); }
-        else { const n = notes[m.key] = notes[m.key] || {}; m.on ? n.on = 1 : n.off = 1; }
+        else { const n = notes[m.key] = notes[m.key] || {}; m.on ? n.on = 1 : n.off = 1;
+          if (!m.on && Object.keys(cc).length) { clearTimeout(timer); timer = setTimeout(finishWheel, 300); } }   // убрал руку — оборот закончен
       } else if ((s.startsWith('pad') || s === 'action') && m.on && !used().includes(m.key)) {
         if (m.cc && m.val < 64) return;
         if (s === 'action') p.action = m.key; else p.pads[+s[3]] = m.key;
@@ -151,6 +158,10 @@ const MIDI = (() => {
     show();
   }
 
+  // нажатие на деке браузер не считает жестом: звук включится после первого тапа по экрану
+  const hintEl = Object.assign(document.createElement('div'), { id: 'soundHint', textContent: 'КОСНИСЬ ЭКРАНА — ВКЛЮЧИТСЯ ЗВУК' }); $('#frame').appendChild(hintEl);
+  function soundHint() { hintEl.classList.toggle('on', !!ac && ac.state !== 'running'); }
+  ['pointerdown', 'keydown'].forEach(t => addEventListener(t, () => { if (ac && ac.state !== 'running') ac.resume().then(soundHint); }));
   function mark() { dot.classList.toggle('on', !!access && [...access.inputs.values()].some(p => profileOf(p.name))); }
   function hook() { for (const p of access.inputs.values()) p.onmidimessage = e => onMessage(p, e.data); mark(); }
   async function init() {
