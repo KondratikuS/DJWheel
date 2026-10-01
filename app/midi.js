@@ -12,7 +12,7 @@ const MIDI = (() => {
   const KNOWN = [
     { match: /DDJ-FLX6/i, title: 'Pioneer DDJ-FLX6',
       profile: { jog: { 'b0:21': flx6Jog, 'b0:22': flx6Jog, 'b0:23': flx6Jog }, touch: null,
-                 pads: ['97:00', '97:01', '97:02', '97:03'], action: '90:0b', fader: { key: 'b6:1f', min: 0, max: 127 } } },
+                 pads: ['97:00', '97:01', '97:02', '97:03'], play: '90:0b', cue: '90:0c', fader: { key: 'b6:1f', min: 0, max: 127 } } },
   ];
   // idleMs — без датчика касания столько тишины = «отпустил»; minMove° — меньше не считается (случайный толчок);
   // spinVel (градусов за кадр) и spinMove° — рулетка только от настоящего раскрута, быстрый поворот к секции её не включает
@@ -65,10 +65,12 @@ const MIDI = (() => {
     const b = $$('.pad')[i]; if (!b) return;
     playSample(b.dataset.s); b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 120);
   }
-  function action() {
+  // PLAY — старт, CUE — назад на финале; если CUE не привязан, назад делает PLAY
+  function play(p) {
     if (state === 'start') { btn.click(); setTimeout(soundHint, 400); }
-    else if (state === 'result' && back.classList.contains('show')) showStart();
+    else if (!p.cue) cue();
   }
+  function cue() { if (state === 'result' && back.classList.contains('show')) showStart(); }
 
   function onMessage(port, data) {
     const m = parse(data); if (!m) return;
@@ -81,7 +83,8 @@ const MIDI = (() => {
     if (p.fader && m.cc && m.key === p.fader.key) return setMix((m.val - p.fader.min) / Math.max(1, p.fader.max - p.fader.min));
     if (!m.on) return;
     const i = p.pads.indexOf(m.key); if (i >= 0) return pad(i);
-    if (m.key === p.action) action();
+    if (m.key === (p.play || p.action)) play(p);          // action — поле из первых профилей
+    else if (m.key === p.cue) cue();
   }
 
   /* ── мастер знакомства ── */
@@ -104,10 +107,10 @@ const MIDI = (() => {
       <div class="row"><button data-a="back">НАЗАД</button><button data-a="skip">ПРОПУСТИТЬ</button><button data-a="close">ЗАКРЫТЬ</button></div>`;
     $('#frame').appendChild(el);
     const q = s => el.querySelector(s);
-    const p = { jog: {}, touch: null, pads: [], action: null, fader: null };
-    const steps = ['wheel', 'check', 'pad0', 'pad1', 'pad2', 'pad3', 'action', 'fader', 'done'];
+    const p = { jog: {}, touch: null, pads: [], play: null, cue: null, fader: null };
+    const steps = ['wheel', 'check', 'pad0', 'pad1', 'pad2', 'pad3', 'play', 'cue', 'fader', 'done'];
     let si = 0, cc = {}, notes = {}, timer = 0, acc = 0, accT = 0; const chk = {};
-    const used = () => [...Object.keys(p.jog), p.touch, ...p.pads, p.action, p.fader && p.fader.key].filter(Boolean);
+    const used = () => [...Object.keys(p.jog), p.touch, ...p.pads, p.play, p.cue, p.fader && p.fader.key].filter(Boolean);
     function show() {
       const s = steps[si]; clearTimeout(timer); cc = {}; notes = {};
       q('.dev').textContent = name || 'жду сигнал с деки…'; q('.step').textContent = s === 'done' ? 'ГОТОВО' : `ШАГ ${si + 1} / ${steps.length - 1}`; q('.got').textContent = '';
@@ -117,10 +120,11 @@ const MIDI = (() => {
       else if (s === 'check') { acc = 0; q('h2').textContent = 'ПРОВЕРКА'; q('.ask').textContent = 'Поверни диск на четверть оборота — здесь должно быть около 90°. Если заметно больше или меньше, поправь кнопками.'; q('.got').textContent = '0°';
         if (!Object.keys(p.jog).length) return next(); }
       else if (s.startsWith('pad')) { const i = +s[3]; q('h2').textContent = 'ПАД ' + PAD_NAMES[i]; q('.ask').textContent = `Нажми кнопку на деке, которая будет играть ${PAD_NAMES[i]}.`; }
-      else if (s === 'action') { q('h2').textContent = 'КНОПКА PLAY'; q('.ask').textContent = 'Нажми PLAY на деке. Этой кнопкой запускается опрос, а на финале — возврат в начало.'; }
+      else if (s === 'play') { q('h2').textContent = 'КНОПКА PLAY'; q('.ask').textContent = 'Нажми PLAY на деке — этой кнопкой запускается опрос.'; }
+      else if (s === 'cue') { q('h2').textContent = 'КНОПКА CUE'; q('.ask').textContent = 'Нажми CUE на деке — этой кнопкой на финале возвращаемся в начало. Если пропустить, назад будет делать PLAY.'; }
       else if (s === 'fader') { q('h2').textContent = 'ФЕЙДЕР МИКСА'; q('.ask').textContent = 'Проведи фейдер микса от края до края — на финале он переливает один трек в другой. Потом «Дальше».'; q('[data-a=skip]').textContent = 'ДАЛЬШЕ'; }
       else { q('h2').textContent = 'ДЕКА ПОДКЛЮЧЕНА'; const n = Object.keys(p.jog).length;
-        q('.ask').textContent = `Колесо: ${n ? 'есть' : 'нет'}${p.touch ? ', с датчиком касания' : ''}. Пады: ${p.pads.filter(Boolean).length} из 4. PLAY: ${p.action ? 'есть' : 'нет'}. Фейдер: ${p.fader ? 'есть' : 'нет'}.`;
+        q('.ask').textContent = `Колесо: ${n ? 'есть' : 'нет'}${p.touch ? ', с датчиком касания' : ''}. Пады: ${p.pads.filter(Boolean).length} из 4. PLAY: ${p.play ? 'есть' : 'нет'}. CUE: ${p.cue ? 'есть' : 'нет'}. Фейдер: ${p.fader ? 'есть' : 'нет'}.`;
         if (name) { profiles[name] = p; save(); } mark(); timer = setTimeout(close, 2500); }
     }
     const next = () => { si = Math.min(si + 1, steps.length - 1); show(); };
@@ -163,9 +167,9 @@ const MIDI = (() => {
         const best = Object.keys(cc).sort((a, b) => (cc[b].max - cc[b].min) - (cc[a].max - cc[a].min))[0], span = cc[best].max - cc[best].min;
         p.fader = span >= 40 ? { key: best, min: cc[best].min, max: cc[best].max } : null;
         q('.got').textContent = `${m.key.toUpperCase()} · ${m.val}` + (p.fader ? `   ход ${p.fader.min}…${p.fader.max}` : '   веди до конца');
-      } else if ((s.startsWith('pad') || s === 'action') && m.on && !used().includes(m.key)) {
+      } else if ((s.startsWith('pad') || s === 'play' || s === 'cue') && m.on && !used().includes(m.key)) {
         if (m.cc && m.val < 64) return;
-        if (s === 'action') p.action = m.key; else p.pads[+s[3]] = m.key;
+        if (s === 'play' || s === 'cue') p[s] = m.key; else p.pads[+s[3]] = m.key;
         q('.got').textContent = m.key.toUpperCase(); clearTimeout(timer); timer = setTimeout(next, 500);
       }
     } };
@@ -175,7 +179,7 @@ const MIDI = (() => {
       if (a === 'close') close();
       else if (a === 'skip') { const s = steps[si]; if (s.startsWith('pad')) p.pads[+s[3]] = null; next(); }
       else if (a === 'less' || a === 'more') { const k = a === 'more' ? 1.1 : 1 / 1.1; for (const key in p.jog) p.jog[key].deg *= k; acc *= k; q('.got').textContent = Math.round(acc) + '°'; }
-      else if (a === 'back') { si = Math.max(0, si - 1); const s = steps[si]; if (s === 'wheel') { p.jog = {}; p.touch = null; } else if (s.startsWith('pad')) p.pads[+s[3]] = null; else if (s === 'action') p.action = null; else if (s === 'fader') p.fader = null; show(); }
+      else if (a === 'back') { si = Math.max(0, si - 1); const s = steps[si]; if (s === 'wheel') { p.jog = {}; p.touch = null; } else if (s.startsWith('pad')) p.pads[+s[3]] = null; else if (s === 'play' || s === 'cue') p[s] = null; else if (s === 'fader') p.fader = null; show(); }
     });
     show();
   }
