@@ -72,8 +72,37 @@ const MIDI = (() => {
   }
   function cue() { if (state === 'result' && back.classList.contains('show')) showStart(); }
 
+  // диагностика (клавиша D): что пришло и что игра с этим сделала
+  let dbg = null;
+  function why(port, data, m, p) {
+    if (!m) return 'не нота и не CC — пропуск';
+    if (wiz) return 'идёт в мастер';
+    if (!p) return 'для этого порта нет профиля';
+    if (p.jog[m.key] && m.cc) return state !== 'question' ? `колесо, но сейчас «${state}» — крутится только на вопросах` : locked ? 'колесо, но ответ уже выбран (пауза)' : 'колесо';
+    if (m.key === p.touch) return 'касание ' + (m.on ? 'вкл' : 'выкл');
+    if (p.fader && m.key === p.fader.key) return 'фейдер микса';
+    const i = p.pads.indexOf(m.key); if (i >= 0) return `пад ${PAD_NAMES[i]}` + (state !== 'result' ? ' (играет только на финале)' : '');
+    if (m.key === (p.play || p.action)) return 'PLAY'; if (m.key === p.cue) return 'CUE';
+    return 'не привязано ни к чему';
+  }
+  function debug(port, data, m, p) {
+    const h = [...data].map(b => hex(b).toUpperCase()).join(' '), ins = access ? [...access.inputs.values()].map(x => x.name).join(', ') : 'нет доступа к MIDI';
+    const pr = p ? `колесо ${Object.keys(p.jog).join(',') || '—'} · касание ${p.touch || '—'} · падов ${p.pads.filter(Boolean).length} · play ${p.play || p.action || '—'} · cue ${p.cue || '—'} · фейдер ${p.fader ? p.fader.key : '—'}` : '—';
+    dbg.textContent = `порты: ${ins}
+последнее: ${port.name} · ${h} → ${why(port, data, m, p)}
+профиль: ${pr}
+состояние: ${state}`;
+  }
+  addEventListener('keydown', e => {
+    if (!/^[dDвВ]$/.test(e.key)) return;
+    if (dbg) { dbg.remove(); dbg = null; return; }
+    dbg = Object.assign(document.createElement('pre'), { id: 'midiDbg', textContent: 'жду сообщение с деки…' }); $('#frame').appendChild(dbg);
+  });
+
   function onMessage(port, data) {
-    const m = parse(data); if (!m) return;
+    const m = parse(data);
+    if (dbg) debug(port, data, m, m && profileOf(port.name));
+    if (!m) return;
     if (wiz) return wiz.feed(port, m);
     const p = profileOf(port.name);
     if (!p) { if (m.on) { openWizard(port.name); if (wiz) wiz.feed(port, m); } return; }   // незнакомая дека подала голос — знакомимся (первое сообщение тоже в зачёт: это часто касание диска)
@@ -94,6 +123,7 @@ const MIDI = (() => {
 #midiWiz .got{min-height:1.4em;color:#e8e14a;font-family:'Share Tech Mono',monospace;font-size:.85em}#midiWiz .row{display:flex;gap:.8em;margin-top:.6em}
 #midiWiz button{font:700 .8em 'Montserrat',sans-serif;letter-spacing:.12em;padding:.7em 1.6em;border-radius:999px;border:2px solid #3d4047;background:linear-gradient(#2b2d31,#151618);color:#eee;cursor:pointer}
 #midiDot{position:absolute;right:1%;bottom:1.5%;z-index:7;width:calc(var(--h)*.012);height:calc(var(--h)*.012);border-radius:50%;background:#2fd85a;box-shadow:0 0 8px #2fd85a;opacity:0;transition:opacity .4s;pointer-events:none}#midiDot.on{opacity:.8}
+#midiDbg{position:absolute;left:1%;top:15%;z-index:40;margin:0;padding:.6em .9em;max-width:62%;white-space:pre-wrap;background:rgba(0,0,0,.82);border:1px solid #3d4047;border-radius:8px;color:#e8e14a;font:calc(var(--h)*.018)/1.5 'Share Tech Mono',monospace;pointer-events:none}
 #soundHint{position:absolute;left:50%;bottom:4%;transform:translateX(-50%);z-index:8;padding:.6em 1.6em;border-radius:999px;background:rgba(232,225,74,.95);color:#111;font:700 calc(var(--h)*.022) 'Montserrat',sans-serif;letter-spacing:.12em;display:none;pointer-events:none}#soundHint.on{display:block}`;
   document.head.appendChild(Object.assign(document.createElement('style'), { textContent: css }));
   const dot = Object.assign(document.createElement('div'), { id: 'midiDot' }); $('#frame').appendChild(dot);
