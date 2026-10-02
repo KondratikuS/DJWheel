@@ -161,13 +161,15 @@ const MIDI = (() => {
       <div class="row"><button data-a="back">НАЗАД</button><button data-a="skip">ПРОПУСТИТЬ</button><button data-a="close">ЗАКРЫТЬ</button></div>`;
     $('#frame').appendChild(el);
     const q = s => el.querySelector(s);
-    const p = { jog: {}, touch: null, pads: [], play: null, cue: null, fader: null };
+    const p = { jog: {}, touch: null, pads: [], play: null, cue: null, fader: null }; let had = false;
     const steps = ['wheel', 'check', 'pad0', 'pad1', 'pad2', 'pad3', 'pad4', 'pad5', 'pad6', 'pad7', 'play', 'cue', 'fader', 'done'];
     let si = 0, cc = {}, notes = {}, timer = 0, acc = 0, accT = 0; const chk = {};
     const used = () => [...Object.keys(p.jog), p.touch, ...p.pads, p.play, p.cue, p.fader && p.fader.key].filter(Boolean);
     function show() {
       const s = steps[si]; clearTimeout(timer); cc = {}; notes = {};
       q('.dev').textContent = name || 'жду сигнал с деки…'; q('.step').textContent = s === 'done' ? 'ГОТОВО' : `ШАГ ${si + 1} / ${steps.length - 1}`; q('.got').textContent = '';
+      const now = s === 'wheel' ? Object.keys(p.jog).join(', ') : s.startsWith('pad') ? p.pads[+s[3]] : s === 'play' || s === 'cue' ? p[s] : s === 'fader' ? p.fader && p.fader.key : '';
+      if (had && now) q('.got').textContent = `сейчас: ${now.toUpperCase()} — «Пропустить» оставит как есть`;
       q('[data-a=back]').style.visibility = si ? 'visible' : 'hidden'; q('[data-a=skip]').style.display = s === 'done' ? 'none' : '';
       q('[data-a=skip]').textContent = s === 'check' ? 'ДАЛЬШЕ' : 'ПРОПУСТИТЬ'; q('.tune').style.display = s === 'check' ? '' : 'none';
       if (s === 'wheel') { q('h2').textContent = 'КОЛЕСО'; q('.ask').textContent = `Положи руку на диск сверху, сделай ${TURNS} полных оборота по часовой стрелке и убери руку. Точность не нужна — возьмём среднее.`; }
@@ -182,12 +184,15 @@ const MIDI = (() => {
         if (name) { profiles[name] = p; save(); } mark(); timer = setTimeout(close, 2500); }
     }
     const next = () => { si = Math.min(si + 1, steps.length - 1); show(); };
+    // у деки уже есть профиль — берём его за основу, чтобы можно было перепривязать одну вещь, а остальное пропустить
+    function adopt() { const ex = name && profileOf(name); if (!ex) return; const c = JSON.parse(JSON.stringify(ex));
+      Object.assign(p, { jog: c.jog || {}, touch: c.touch || null, pads: c.pads || [], play: c.play || c.action || null, cue: c.cue || null, fader: c.fader || null }); had = true; show(); }
     const note = t => { if (!q('.ask').textContent.includes(t)) q('.ask').textContent += ` (${t})`; };
     function finishWheel() {
       const held = Object.values(notes).some(n => n.on && !n.off);        // рука ещё на диске — ждём, но не вечно
       if (held && !finishWheel.waited) { finishWheel.waited = 1; q('.got').textContent += '  — убери руку с диска'; timer = setTimeout(finishWheel, 4000); return; }
       finishWheel.waited = 0;
-      let found = 0, info = [];
+      let found = 0, info = []; const jogNew = {};
       for (const key in cc) {
         const v = cc[key]; if (v.length < 8) continue;
         // кодировка шага: пробуем все три («64 ± n», дополнительный код, абсолютная позиция). Оборот в одну
@@ -195,6 +200,7 @@ const MIDI = (() => {
         // участках настоящая кодировка даёт ±1..3, а ошибочная — числа около 60
         let best = null;
         for (const enc of ['offset', 'twos', 'abs']) {
+          if (enc === 'abs' && !v.some((x, i) => i && Math.abs(x - v[i - 1]) > 64)) continue;   // ход без перехода через ноль — это фейдер или ручка, а не колесо
           const st = {}, d = v.map(x => decode({ enc, sign: 1 }, x, st)), sum = d.reduce((a, x) => a + x, 0), abs = d.reduce((a, x) => a + Math.abs(x), 0);
           if (abs < 24 || Math.abs(sum) / abs < .9) continue;
           const mags = d.map(Math.abs).filter(Boolean).sort((x, y) => x - y), low = mags[Math.floor(mags.length * .1)] || 0;
@@ -202,14 +208,15 @@ const MIDI = (() => {
         }
         if (!best) continue;
         const { enc, sum } = best;
-        p.jog[key] = { enc, sign: sum < 0 ? -1 : 1, deg: 360 * TURNS / Math.abs(sum) }; found++; info.push(`${key.toUpperCase()} · около ${Math.round(Math.abs(sum) / TURNS)} тиков на оборот`);
+        jogNew[key] = { enc, sign: sum < 0 ? -1 : 1, deg: 360 * TURNS / Math.abs(sum) }; found++; info.push(`${key.toUpperCase()} · около ${Math.round(Math.abs(sum) / TURNS)} тиков на оборот`);
       }
-      if (!found) { q('.got').textContent = 'Вращение не распознано — попробуй ещё раз, в одну сторону.'; cc = {}; notes = {}; return; }
+      if (!found) { q('.got').textContent = 'Это не похоже на колесо (фейдер или ручка?) — покрути сам диск, в одну сторону.'; cc = {}; notes = {}; return; }
+      p.jog = jogNew; p.touch = null;                                     // новая калибровка заменяет старую целиком
       const t = Object.keys(notes).find(k => notes[k].both); if (t) p.touch = t;
       q('.got').textContent = info.join('   ') + (t ? `   касание ${t.toUpperCase()}` : '   касание не найдено'); timer = setTimeout(next, 1800);
     }
     wiz = { feed(port, m) {
-      if (!name) { name = port.name; q('.dev').textContent = name; }
+      if (!name) { name = port.name; q('.dev').textContent = name; adopt(); }
       if (port.name !== name) return; const s = steps[si];
       if (s === 'wheel') {
         if (m.cc) { (cc[m.key] = cc[m.key] || []).push(m.val); q('.got').textContent = `${m.key.toUpperCase()} … ${Object.values(cc).reduce((a, x) => a + x.length, 0)}`; clearTimeout(timer); timer = setTimeout(finishWheel, 2000); }
@@ -220,11 +227,14 @@ const MIDI = (() => {
         const j = p.jog[m.key]; if (m.key === p.touch && m.on) acc = 0;
         if (j && m.cc) { if (cand) cand.ticks++; const now = performance.now(); if (!p.touch && now - accT > 1500) acc = 0; accT = now; acc += decode(j, m.val, chk) * j.deg; q('.got').textContent = Math.round(acc) + '°'; }
       } else if (s === 'fader') {                       // берём CC с самым широким ходом
-        if (!m.cc || p.jog[m.key]) return; const r = cc[m.key] = cc[m.key] || { min: 127, max: 0 }; r.min = Math.min(r.min, m.val); r.max = Math.max(r.max, m.val);
-        const best = Object.keys(cc).sort((a, b) => (cc[b].max - cc[b].min) - (cc[a].max - cc[a].min))[0], span = cc[best].max - cc[best].min;
-        p.fader = span >= 40 ? { key: best, min: cc[best].min, max: cc[best].max } : null;
-        q('.got').textContent = `${m.key.toUpperCase()} · ${m.val}` + (p.fader ? `   ход ${p.fader.min}…${p.fader.max}` : '   веди до конца');
-      } else if ((s.startsWith('pad') || s === 'play' || s === 'cue') && m.on && !used().includes(m.key)) {
+        if (!m.cc) return; const r = cc[m.key] = cc[m.key] || { min: 127, max: 0, prev: m.val };
+        if (Math.abs(m.val - r.prev) > 64) r.wrap = 1; r.prev = m.val;          // скачок через ноль — это энкодер, не фейдер
+        r.min = Math.min(r.min, m.val); r.max = Math.max(r.max, m.val);
+        const best = Object.keys(cc).filter(k => !cc[k].wrap).sort((a, b) => (cc[b].max - cc[b].min) - (cc[a].max - cc[a].min))[0];
+        const ok = best && cc[best].max - cc[best].min >= 40;
+        if (ok) { p.fader = { key: best, min: cc[best].min, max: cc[best].max }; delete p.jog[best]; }   // если его раньше ошибочно записали колесом — убираем оттуда
+        q('.got').textContent = `${m.key.toUpperCase()} · ${m.val}` + (ok ? `   ход ${p.fader.min}…${p.fader.max}` : '   веди до конца');
+      } else if ((s.startsWith('pad') || s === 'play' || s === 'cue') && m.on && (!used().includes(m.key) || m.key === (s.startsWith('pad') ? p.pads[+s[3]] : p[s]))) {
         if (m.cc && m.val < 64) return;
         if (s === 'play' || s === 'cue') p[s] = m.key; else p.pads[+s[3]] = m.key;
         q('.got').textContent = m.key.toUpperCase(); clearTimeout(timer); timer = setTimeout(next, 500);
@@ -234,7 +244,7 @@ const MIDI = (() => {
     el.addEventListener('click', e => {
       const a = e.target.dataset && e.target.dataset.a; if (!a) return;
       if (a === 'close') close();
-      else if (a === 'skip') { const s = steps[si]; if (s.startsWith('pad')) p.pads[+s[3]] = null; next(); }
+      else if (a === 'skip') next();                                       // пропуск ничего не стирает
       else if (a === 'less' || a === 'more') { const k = a === 'more' ? 1.1 : 1 / 1.1; for (const key in p.jog) p.jog[key].deg *= k; acc *= k; q('.got').textContent = Math.round(acc) + '°'; }
       else if (a === 'back') { si = Math.max(0, si - 1); const s = steps[si]; if (s === 'wheel') { p.jog = {}; p.touch = null; } else if (s.startsWith('pad')) p.pads[+s[3]] = null; else if (s === 'play' || s === 'cue') p[s] = null; else if (s === 'fader') p.fader = null; show(); }
     });
