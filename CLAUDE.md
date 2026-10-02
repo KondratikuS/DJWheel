@@ -244,3 +244,18 @@ vinyl включить. `tools/midi_listen.py [сек]` — слушать вс�
 сравнивает только в пределах одного порта. «Закрыть» в мастере сохраняет уже привязанное.
 При движении фейдера под табло на пару секунд появляется полоска микса A—B (`#mixBar`) —
 видно, что игра его читает, даже вне финала.
+
+## Музыка: локальная генерация (02.10.2026)
+
+В ComfyUI (сборка 22.09) есть узлы ACE-Step v1 и 1.5; у 1.5 прямые поля bpm / keyscale /
+duration / timesignature. Скачан `ace_step_1.5_turbo_aio.safetensors` (10 ГБ, Apache 2.0,
+Comfy-Org/ace_step_1.5_ComfyUI_files) в `C:\AI\ComfyUI-models\checkpoints`.
+`tools/gen_music.py NAME "теги" --bpm --key --bars --seed` → `tools/out/music/NAME_seed.flac`
+(48 кГц стерео; 16 тактов генерятся за 4–8 с на 4090; схема как в официальном шаблоне:
+CheckpointLoaderSimple → ModelSamplingAuraFlow(3) → KSampler 8 шагов, cfg 1, euler/simple).
+`tools/music_check.py файлы --bpm N` меряет темп и сдвиг первой доли (PyAV + свой spectral flux;
+torchaudio.load в этой venv не работает — нет torchcodec; FLAC из ComfyUI упакованный s16,
+каналы вперемежку). Проверен на синтетических кликах: темп до 0,02 BPM.
+Первая проба (124 BPM, A minor, 16 тактов): A tech house — фактически 126,00 BPM (+1,6 %),
+B melodic house — 124,96 (+0,8 %); первая доля +243 и +295 мс. Вывод: темп модель держит
+приблизительно, для сведения нужна подгонка — растяжение под точный темп и обрезка по сетке.
