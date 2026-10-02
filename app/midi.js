@@ -23,14 +23,26 @@ const MIDI = (() => {
   try { profiles = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) {}
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(profiles)); } catch (e) {} };
   const hex = b => b.toString(16).padStart(2, '0');
+  // у одной деки бывает несколько портов («XDJ-XZ (1)», «XDJ-XZ (2)») — профиль общий, по имени без номера
+  // а адреса на разных портах могут совпадать, поэтому ключ сообщения несёт номер порта: «2/b4:0b»
+  const base = n => String(n).replace(/\s*\(\d+\)\s*$/, '');
+  const tagOf = n => (String(n).match(/\((\d+)\)\s*$/) || [])[1] || '';
+  const split = key => { const i = key.indexOf('/'); return i < 0 ? ['', key] : [key.slice(0, i), key.slice(i + 1)]; };
+  // профили первых версий хранились по имени порта и без номера в ключах — переносим
+  for (const k of Object.keys(profiles)) {
+    const b = base(k), t = tagOf(k); if (b === k) continue;
+    const o = profiles[k], T = x => (x && t && !x.includes('/') ? t + '/' + x : x); delete profiles[k]; if (profiles[b]) continue;
+    profiles[b] = { jog: Object.fromEntries(Object.entries(o.jog || {}).map(([x, v]) => [T(x), v])), touch: T(o.touch) || null, pads: (o.pads || []).map(T),
+                    play: T(o.play || o.action) || null, cue: T(o.cue) || null, fader: o.fader ? { ...o.fader, key: T(o.fader.key) } : null };
+  }
   const profileOf = name => profiles[name] || (KNOWN.find(k => k.match.test(name)) || {}).profile || null;
 
   // сообщение → {key, on, val}; Note Off и Note On с нулём сводим к одному ключу
-  function parse(d) {
+  function parse(d, tag) {
     let st = d[0], v = d[2] || 0; const type = st & 0xf0;
     if (type === 0x80) { st = 0x90 | (st & 0x0f); v = 0; }
     if (type !== 0x90 && type !== 0x80 && type !== 0xb0) return null;
-    return { key: hex(st) + ':' + hex(d[1]), cc: type === 0xb0, val: v, on: v > 0 };
+    return { key: (tag ? tag + '/' : '') + hex(st) + ':' + hex(d[1]), cc: type === 0xb0, val: v, on: v > 0 };
   }
   const decode = (j, v, st) => {
     if (j.enc === 'offset') return (v - 64) * j.sign;
@@ -89,7 +101,7 @@ const MIDI = (() => {
     const h = [...data].map(b => hex(b).toUpperCase()).join(' '), ins = access ? [...access.inputs.values()].map(x => x.name).join(', ') : 'нет доступа к MIDI';
     const pr = p ? `колесо ${Object.keys(p.jog).join(',') || '—'} · касание ${p.touch || '—'} · падов ${p.pads.filter(Boolean).length} · play ${p.play || p.action || '—'} · cue ${p.cue || '—'} · фейдер ${p.fader ? p.fader.key : '—'}` : '—';
     dbg.textContent = `порты: ${ins}
-последнее: ${port.name} · ${h} → ${why(port, data, m, p)}
+последнее: ${port.full || port.name} · ${h} → ${why(port, data, m, p)}
 профиль: ${pr}
 состояние: ${state}`;
   }
@@ -100,7 +112,7 @@ const MIDI = (() => {
   });
 
   function onMessage(port, data) {
-    const m = parse(data);
+    const m = parse(data, port.tag);
     if (dbg) debug(port, data, m, m && profileOf(port.name));
     if (!m) return;
     if (wiz) return wiz.feed(port, m);
@@ -110,7 +122,7 @@ const MIDI = (() => {
     if (!j && sibling(p, m, port.name)) { j = p.jog[m.key]; keep(port, p); }
     if (j && m.cc) { if (cand) cand.ticks++; return turn(decode(j, m.val, absState[port.name + m.key] || (absState[port.name + m.key] = {})) * j.deg); }
     if (m.key === p.touch) return touch(m.on);
-    if (p.fader && m.cc && m.key === p.fader.key) return setMix((m.val - p.fader.min) / Math.max(1, p.fader.max - p.fader.min));
+    if (p.fader && m.cc && m.key === p.fader.key) { setMix((m.val - p.fader.min) / Math.max(1, p.fader.max - p.fader.min)); return showMix(); }
     const i = p.pads.indexOf(m.key); if (i >= 0) { if (m.on) pad(i); return; }
     if (m.key === (p.play || p.action)) { if (m.on) play(p); return; }          // action — поле из первых профилей
     if (m.key === p.cue) { if (m.on) cue(); return; }
@@ -123,7 +135,8 @@ const MIDI = (() => {
   const pend = {}, rejected = {}; let cand = null;
   function sibling(p, m, tag) {
     if (!m.cc || p.jog[m.key] || rejected[tag + m.key] || (p.fader && p.fader.key === m.key)) return null;
-    const k = Object.keys(p.jog).find(k => p.jog[k].enc !== 'abs' && k.slice(0, 2) === m.key.slice(0, 2) && Math.abs(parseInt(k.slice(3), 16) - parseInt(m.key.slice(3), 16)) <= 3);
+    const [mt, mk] = split(m.key);                                         // тот же порт, тот же канал, соседний номер
+    const k = Object.keys(p.jog).find(k => { const [t, x] = split(k); return p.jog[k].enc !== 'abs' && t === mt && x.slice(0, 2) === mk.slice(0, 2) && Math.abs(parseInt(x.slice(3), 16) - parseInt(mk.slice(3), 16)) <= 3; });
     if (!k) return null;
     const v = pend[tag + m.key] = pend[tag + m.key] || []; v.push(m.val); if (v.length < 6) return null;
     delete pend[tag + m.key];
@@ -147,6 +160,8 @@ const MIDI = (() => {
 #midiWiz .got{min-height:1.4em;color:#e8e14a;font-family:'Share Tech Mono',monospace;font-size:.85em}#midiWiz .row{display:flex;gap:.8em;margin-top:.6em}
 #midiWiz button{font:700 .8em 'Montserrat',sans-serif;letter-spacing:.12em;padding:.7em 1.6em;border-radius:999px;border:2px solid #3d4047;background:linear-gradient(#2b2d31,#151618);color:#eee;cursor:pointer}
 #midiDot{position:absolute;right:1%;bottom:1.5%;z-index:7;width:calc(var(--h)*.012);height:calc(var(--h)*.012);border-radius:50%;background:#2fd85a;box-shadow:0 0 8px #2fd85a;opacity:0;transition:opacity .4s;pointer-events:none}#midiDot.on{opacity:.8}
+#mixBar{position:absolute;left:50%;top:14.2%;transform:translateX(-50%);z-index:8;width:24%;display:flex;align-items:center;gap:.8em;color:#d9e6ff;font:700 calc(var(--h)*.02) 'Share Tech Mono',monospace;opacity:0;transition:opacity .3s;pointer-events:none}#mixBar.on{opacity:1}
+#mixBar i{flex:1;height:calc(var(--h)*.008);border-radius:99px;background:#2b2d31;position:relative;box-shadow:0 0 0 1px #000}#mixBar b{position:absolute;top:50%;width:calc(var(--h)*.03);height:calc(var(--h)*.03);margin:calc(var(--h)*-.015) 0 0 calc(var(--h)*-.015);border-radius:50%;background:#e8e8ea;box-shadow:0 0 10px rgba(255,255,255,.6)}
 #midiDbg{position:absolute;left:1%;top:15%;z-index:40;margin:0;padding:.6em .9em;max-width:62%;white-space:pre-wrap;background:rgba(0,0,0,.82);border:1px solid #3d4047;border-radius:8px;color:#e8e14a;font:calc(var(--h)*.018)/1.5 'Share Tech Mono',monospace;pointer-events:none}
 #soundHint{position:absolute;left:50%;bottom:4%;transform:translateX(-50%);z-index:8;padding:.6em 1.6em;border-radius:999px;background:rgba(232,225,74,.95);color:#111;font:700 calc(var(--h)*.022) 'Montserrat',sans-serif;letter-spacing:.12em;display:none;pointer-events:none}#soundHint.on{display:block}`;
   document.head.appendChild(Object.assign(document.createElement('style'), { textContent: css }));
@@ -243,7 +258,7 @@ const MIDI = (() => {
     function close() { clearTimeout(timer); el.remove(); wiz = null; }
     el.addEventListener('click', e => {
       const a = e.target.dataset && e.target.dataset.a; if (!a) return;
-      if (a === 'close') close();
+      if (a === 'close') { if (name && (Object.keys(p.jog).length || p.pads.some(Boolean) || p.play || p.cue || p.fader)) { profiles[name] = p; save(); mark(); } close(); }
       else if (a === 'skip') next();                                       // пропуск ничего не стирает
       else if (a === 'less' || a === 'more') { const k = a === 'more' ? 1.1 : 1 / 1.1; for (const key in p.jog) p.jog[key].deg *= k; acc *= k; q('.got').textContent = Math.round(acc) + '°'; }
       else if (a === 'back') { si = Math.max(0, si - 1); const s = steps[si]; if (s === 'wheel') { p.jog = {}; p.touch = null; } else if (s.startsWith('pad')) p.pads[+s[3]] = null; else if (s === 'play' || s === 'cue') p[s] = null; else if (s === 'fader') p.fader = null; show(); }
@@ -251,12 +266,15 @@ const MIDI = (() => {
     show();
   }
 
+  // полоска микса: появляется на пару секунд, когда двигают фейдер
+  const mixEl = Object.assign(document.createElement('div'), { id: 'mixBar', innerHTML: '<span>A</span><i><b></b></i><span>B</span>' }); $('#frame').appendChild(mixEl); let mixT = 0;
+  function showMix() { mixEl.querySelector('b').style.left = mix * 100 + '%'; mixEl.classList.add('on'); clearTimeout(mixT); mixT = setTimeout(() => mixEl.classList.remove('on'), 1800); }
   // нажатие на деке браузер не считает жестом: звук включится после первого тапа по экрану
   const hintEl = Object.assign(document.createElement('div'), { id: 'soundHint', textContent: 'КОСНИСЬ ЭКРАНА — ВКЛЮЧИТСЯ ЗВУК' }); $('#frame').appendChild(hintEl);
   function soundHint() { hintEl.classList.toggle('on', !!ac && ac.state !== 'running'); }
   ['pointerdown', 'keydown'].forEach(t => addEventListener(t, () => { if (ac && ac.state !== 'running') ac.resume().then(soundHint); }));
-  function mark() { dot.classList.toggle('on', !!access && [...access.inputs.values()].some(p => profileOf(p.name))); }
-  function hook() { for (const p of access.inputs.values()) p.onmidimessage = e => onMessage(p, e.data); mark(); }
+  function mark() { dot.classList.toggle('on', !!access && [...access.inputs.values()].some(p => profileOf(base(p.name)))); }
+  function hook() { for (const p of access.inputs.values()) p.onmidimessage = e => onMessage({ name: base(p.name), tag: tagOf(p.name), full: p.name }, e.data); mark(); }
   async function init() {
     if (!navigator.requestMIDIAccess) return;
     try { access = await navigator.requestMIDIAccess(); } catch (e) { return; }
@@ -273,5 +291,5 @@ const MIDI = (() => {
   });
   init();
   // feed — подать сообщение вручную (отладка без железа): MIDI.feed('имя порта', [0xB0, 0x22, 0x41])
-  return { openWizard, profiles: () => profiles, reset: () => { profiles = {}; save(); mark(); }, feed: (name, data) => onMessage({ name }, data) };
+  return { openWizard, profiles: () => profiles, reset: () => { profiles = {}; save(); mark(); }, feed: (name, data) => onMessage({ name: base(name), tag: tagOf(name), full: name }, data) };
 })();
