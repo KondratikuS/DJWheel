@@ -116,6 +116,11 @@
   .led.on { background: var(--c); box-shadow: 0 0 6px var(--c); }
 
   /* ── кнопка под диском ── */
+  /* временно, для прослушивания: переключатель пар треков на финале */
+  #pairBtn { position: absolute; z-index: 6; right: 2%; bottom: 3.5%; padding: .5em 1.2em; border-radius: 999px; border: 2px solid #3d4047;
+    background: linear-gradient(#2b2d31, #151618); color: #e8e14a; font: 700 calc(var(--h) * .022) 'Share Tech Mono', monospace; letter-spacing: .1em;
+    cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .8s; }
+  #pairBtn.show { opacity: 1; pointer-events: auto; }
   #back {
     position: absolute; z-index: 6; left: 50%; bottom: 3.5%; transform: translateX(-50%);
     padding: .55em 2.4em; border-radius: 999px; border: 2px solid #3d4047;
@@ -194,6 +199,7 @@
   </div>
 
   <button id="back">НАЗАД</button>
+  <button id="pairBtn" title="временно: переключение пар треков (клавиша N)">ПАРА</button>
 
   <div id="result">
     <div class="tag">ТВОЙ ПРОФИЛЬ</div>
@@ -216,15 +222,16 @@ const DATA = {
     })),
   })),
   profiles: [
-    { name: 'THE SELECTOR',  text: 'Описание-заглушка профиля A. Здесь будет два-три предложения о том, какой ты диджей и чем берёшь танцпол.', track: 'audio/suno2_a.ogg', track2: 'audio/suno2_b.ogg' },
-    { name: 'THE TECHNICIAN', text: 'Описание-заглушка профиля B. Точность, свод по битам и чистые переходы — твоя стихия.', track: 'audio/suno2_a.ogg', track2: 'audio/suno2_b.ogg' },
-    { name: 'THE CROWD READER', text: 'Описание-заглушка профиля C. Ты чувствуешь зал раньше, чем он сам понимает, чего хочет.', track: 'audio/suno1_a.ogg', track2: 'audio/suno1_b.ogg' },
-    { name: 'THE EXPERIMENTER', text: 'Описание-заглушка профиля D. Жанры для тебя не правила, а сырьё.', track: 'audio/suno1_a.ogg', track2: 'audio/suno1_b.ogg' },
+    { name: 'THE SELECTOR',  text: 'Описание-заглушка профиля A. Здесь будет два-три предложения о том, какой ты диджей и чем берёшь танцпол.', track: 'audio/house_a.ogg', track2: 'audio/house_b.ogg' },
+    { name: 'THE TECHNICIAN', text: 'Описание-заглушка профиля B. Точность, свод по битам и чистые переходы — твоя стихия.', track: 'audio/techno_a.ogg', track2: 'audio/techno_b.ogg' },
+    { name: 'THE CROWD READER', text: 'Описание-заглушка профиля C. Ты чувствуешь зал раньше, чем он сам понимает, чего хочет.', track: 'audio/disco_a.ogg', track2: 'audio/disco_b.ogg' },
+    { name: 'THE EXPERIMENTER', text: 'Описание-заглушка профиля D. Жанры для тебя не правила, а сырьё.', track: 'audio/dnb_a.ogg', track2: 'audio/dnb_b.ogg' },
   ],
   // у профиля: track и track2 — две половины одного трека (A = ударные + бас, B = остальное), фейдер деки переливает
-  // между ними, середина = полный трек; null — синтез. Пока профили 1–2 на suno2, 3–4 на suno1
+  // между ними, середина = полный трек; null — синтез. house / techno / disco / dnb — ACE-Step + Demucs (tools/make_tracks.py)
+  testPairs: [{ a: 'audio/suno1_a.ogg', b: 'audio/suno1_b.ogg' }, { a: 'audio/suno2_a.ogg', b: 'audio/suno2_b.ogg' }],   // временно: лишние пары для прослушивания кнопкой ПАРА
   bgTrack: null,            // тихий фон на вопросах (URL); null — синтетический пад
-  samples: { kick: null, hat: null, clap: null, snare: null, tom: null, crash: null, horn: null, laser: null },   // URL семплов; null — синтез
+  samples: { kick: 'audio/kick.ogg', hat: 'audio/hat.ogg', clap: 'audio/clap.ogg', snare: 'audio/snare.ogg', tom: 'audio/tom.ogg', crash: 'audio/crash.ogg', horn: 'audio/horn.ogg', laser: 'audio/laser.ogg' },   // семплы (tools/make_samples.py); null — синтез
   dwellMs: 2000,            // задержался на секции — выбор
   settleMs: 600,            // пауза после выбора перед следующим вопросом
   flickVel: 14,             // градусов за кадр при отпускании — резкий рывок, включается рулетка
@@ -415,7 +422,7 @@ function showStart() {
   stopAll(); platter.classList.remove('spin'); platter.style.transition = 'none'; setRot(0); selected = -1;
   segs.forEach(s => s.g.classList.remove('on', 'pick'));
   display.classList.remove('eq'); result.classList.remove('show'); ring.classList.add('hidden');
-  $$('.pad').forEach(p => p.classList.remove('show')); padsHome(); back.classList.remove('show');
+  $$('.pad').forEach(p => p.classList.remove('show')); padsHome(); back.classList.remove('show'); $('#pairBtn').classList.remove('show');
   setLeds(null);
   tag.textContent = 'DJ WHEEL'; question.textContent = DATA.title;
   btn.textContent = 'START'; btn.className = 'pulse';
@@ -451,7 +458,7 @@ function showResult() {
       $('#rTitle').textContent = p.name; $('#rText').textContent = '';
       result.classList.add('show');
       typeText($('#rText'), p.text);
-      setTimeout(() => back.classList.add('show'), 700);    // после переезда падов
+      setTimeout(() => { back.classList.add('show'); showPairBtn(); }, 700);    // после переезда падов
     }, 500);
   }, 2200);
 }
@@ -646,7 +653,27 @@ function makeBeat(out, variant = 0, t0 = ac.currentTime + .05) {
   tick();
   return { stop: () => clearTimeout(timer) };
 }
+// временно: все пары треков из профилей, переключение на финале кнопкой или клавишей N
+const PAIRS = [...DATA.profiles.filter((p, i, arr) => p.track && arr.findIndex(q => q.track === p.track) === i).map(p => ({ a: p.track, b: p.track2 })), ...(DATA.testPairs || [])]
+  .map(x => ({ ...x, label: (x.a.match(/([a-z0-9]+)_a\.ogg/i) || [])[1] || '?' }));
+let pairIdx = -1;
+function showPairBtn() {
+  if (PAIRS.length < 2) return;
+  const cur = DATA.profiles.find(p => p.name === $('#rTitle').textContent); pairIdx = Math.max(0, PAIRS.findIndex(x => cur && x.a === cur.track));
+  $('#pairBtn').textContent = 'ПАРА: ' + PAIRS[pairIdx].label.toUpperCase(); $('#pairBtn').classList.add('show');
+}
+function switchPair() {
+  if (state !== 'result' || PAIRS.length < 2) return;
+  pairIdx = (pairIdx + 1) % PAIRS.length; const pr = PAIRS[pairIdx]; $('#pairBtn').textContent = 'ПАРА: ' + pr.label.toUpperCase();
+  [media, mediaB].forEach(m => { if (m) try { m.stop(); } catch (e) {} }); media = mediaB = null;
+  if (synth) { synth.stop(); synth = null; } if (synthB) { synthB.stop(); synthB = null; }
+  startMusic(pr.a, pr.b);
+}
+$('#pairBtn').addEventListener('click', switchPair);
+addEventListener('keydown', e => { if (e.key === 'n' || e.key === 'N' || e.key === 'т' || e.key === 'Т') switchPair(); });
+
 function drawEq() {
+  cancelAnimationFrame(eqRaf);
   const c = $('#eq'), ctx = c.getContext('2d');
   const buf = new Uint8Array(analyser.frequencyBinCount);
   const loop = () => {

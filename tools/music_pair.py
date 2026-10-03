@@ -20,6 +20,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument('stems'); ap.add_argument('prefix')
 ap.add_argument('--bpm', type=float, default=124); ap.add_argument('--bars', type=int, default=16)
 ap.add_argument('--start-bar', type=int, default=None); ap.add_argument('--gain', type=float, default=-1)
+ap.add_argument('--bleed', type=float, default=0.0, help='доля чужих стемов в каждой половине: прячет швы разделения, 0.2 = −14 дБ')
 a = ap.parse_args()
 S = Path(a.stems); tmp = Path(tempfile.mkdtemp())
 names = ['drums', 'bass', 'other', 'vocals']
@@ -70,7 +71,8 @@ def cut(x):
     c = x[:, i0:i0 + n].copy(); xf = int(sr * .02); w = np.linspace(0, 1, xf, dtype=np.float32); tail = x[:, i0 + n:i0 + n + xf]
     if tail.shape[1] == xf: c[:, :xf] = c[:, :xf] * w + tail * (1 - w)
     return c
-A = cut(out['drums']) + cut(out['bass']); B = cut(out['other']) + cut(out['vocals'])
+R, M = cut(out['drums']) + cut(out['bass']), cut(out['other']) + cut(out['vocals'])
+A, B = R + M * a.bleed, M + R * a.bleed            # A — ритм с каплей мелодии, B — мелодия с каплей ритма
 g = 10 ** (a.gain / 20) / max(1e-6, np.abs(A + B).max())
 for tag, x in (('a', A), ('b', B)):
     raw = tmp / f'{tag}.wav'; wavfile.write(raw, sr, ((x * g).T * 32767).astype(np.int16))
