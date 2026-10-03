@@ -114,7 +114,8 @@ def laser():
 
 ap = argparse.ArgumentParser()
 for k, d in [('kick', 'house'), ('hat', 'house'), ('clap', 'disco'), ('snare', 'dnb')]: ap.add_argument('--' + k, default=d)
-a = ap.parse_args(); OUT.mkdir(exist_ok=True)
+ap.add_argument('--stems', default=str(STEMS), help='папка htdemucs со стемами')
+a = ap.parse_args(); OUT.mkdir(exist_ok=True); STEMS = Path(a.stems)
 for name, src, kind in [('kick', a.kick, 'kick'), ('hat', a.hat, 'hat'), ('clap', a.clap, 'mid'), ('snare', a.snare, 'mid')]:
     stem = next(STEMS.glob(src + '_*'), None) or (STEMS / src)
     found = hits(stem, kind); used = stem.name
