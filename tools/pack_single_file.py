@@ -8,7 +8,7 @@ html = (APP / 'index.html').read_text(encoding='utf-8')
 def data_uri(rel):
     p = APP / rel
     if not p.is_file(): return None
-    mime = mimetypes.guess_type(p.name)[0] or 'application/octet-stream'
+    mime = {'.ogg': 'audio/ogg'}.get(p.suffix) or mimetypes.guess_type(p.name)[0] or 'application/octet-stream'
     return f'data:{mime};base64,' + base64.b64encode(p.read_bytes()).decode()
 
 missing = []
@@ -20,6 +20,14 @@ def repl(m):
 html = re.sub(r'((?:src|href)=")(img/[^"]+)(")', repl, html)
 html = re.sub(r'(url\()(img/[^)]+)(\))', repl, html)
 html = re.sub(r"(= ')(img/[^']+)(')", repl, html)
+# треки финала: один файл может стоять у нескольких профилей — кладём каждый один раз в словарь AUDIO
+audio = {}
+def audio_ref(m):
+    rel = m.group(1); uri = data_uri(rel)
+    if uri is None: missing.append(rel); return m.group(0)
+    audio[rel] = uri; return f"AUDIO['{rel}']"
+html = re.sub(r"'(audio/[^']+)'", audio_ref, html)
+html = html.replace('const DATA = {', 'const AUDIO = ' + json.dumps(audio) + ';' + chr(10) + 'const DATA = {', 1)
 # layout.js — внутрь страницы; картинки, которые страница подставляет сама (ручки фейдеров) — в IMG
 for js in ('layout.js', 'midi.js'):
     html = html.replace(f'<script src="{js}"></script>', '<script>\n' + (APP / js).read_text(encoding='utf-8') + '</script>')

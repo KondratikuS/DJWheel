@@ -216,10 +216,10 @@ const DATA = {
     })),
   })),
   profiles: [
-    { name: 'THE SELECTOR',  text: 'Описание-заглушка профиля A. Здесь будет два-три предложения о том, какой ты диджей и чем берёшь танцпол.', track: null },
-    { name: 'THE TECHNICIAN', text: 'Описание-заглушка профиля B. Точность, свод по битам и чистые переходы — твоя стихия.', track: null },
-    { name: 'THE CROWD READER', text: 'Описание-заглушка профиля C. Ты чувствуешь зал раньше, чем он сам понимает, чего хочет.', track: null },
-    { name: 'THE EXPERIMENTER', text: 'Описание-заглушка профиля D. Жанры для тебя не правила, а сырьё.', track: null },
+    { name: 'THE SELECTOR',  text: 'Описание-заглушка профиля A. Здесь будет два-три предложения о том, какой ты диджей и чем берёшь танцпол.', track: 'audio/track_a.ogg', track2: 'audio/track_b.ogg' },
+    { name: 'THE TECHNICIAN', text: 'Описание-заглушка профиля B. Точность, свод по битам и чистые переходы — твоя стихия.', track: 'audio/track_a.ogg', track2: 'audio/track_b.ogg' },
+    { name: 'THE CROWD READER', text: 'Описание-заглушка профиля C. Ты чувствуешь зал раньше, чем он сам понимает, чего хочет.', track: 'audio/track_a.ogg', track2: 'audio/track_b.ogg' },
+    { name: 'THE EXPERIMENTER', text: 'Описание-заглушка профиля D. Жанры для тебя не правила, а сырьё.', track: 'audio/track_a.ogg', track2: 'audio/track_b.ogg' },
   ],
   // у профиля: track и track2 — два сведённых трека финала (URL), фейдер деки переливает между ними; null — синтез
   bgTrack: null,            // тихий фон на вопросах (URL); null — синтетический пад
@@ -462,7 +462,7 @@ function goFullscreen() {
   if (rq && !document.fullscreenElement && !document.webkitFullscreenElement) { try { const p = rq.call(el, { navigationUI: 'hide' }); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
   if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
 }
-btn.addEventListener('click', () => { if (state === 'start') { goFullscreen(); ensureAudio(); startBg(); showQuestion(); } });
+btn.addEventListener('click', () => { if (state === 'start') { goFullscreen(); ensureAudio(); preloadTracks(); startBg(); showQuestion(); } });
 back.addEventListener('click', showStart);
 $$('.pad').forEach(p => {
   p.addEventListener('pointerdown', () => { playSample(p.dataset.s); p.classList.add('hit'); setTimeout(() => p.classList.remove('hit'), 120); });
@@ -494,19 +494,28 @@ function setMix(x) {
   gainA.gain.setTargetAtTime(Math.cos(mix * Math.PI / 2), ac.currentTime, .02);
   gainB.gain.setTargetAtTime(Math.sin(mix * Math.PI / 2), ac.currentTime, .02);
 }
-function startMusic(url, url2) {
+// файлы треков декодируются заранее и стартуют из буферов в один и тот же момент аудиочасов —
+// так два сведённых трека совпадают до сэмпла (у <audio> разброс старта в миллисекунды слышен как фленджер)
+const bufs = {};
+function loadBuf(url) {
+  if (!bufs[url]) bufs[url] = fetch(url).then(r => r.arrayBuffer()).then(b => ac.decodeAudioData(b)).catch(e => { console.warn('трек не загрузился', url, e); delete bufs[url]; return null; });
+  return bufs[url];
+}
+function preloadTracks() { ensureAudio(); DATA.profiles.forEach(p => [p.track, p.track2].forEach(u => u && loadBuf(u))); }
+async function startMusic(url, url2) {
   trackGain.gain.setValueAtTime(0, ac.currentTime); ramp(trackGain, .8, 1.5);
+  const [ba, bb] = await Promise.all([url ? loadBuf(url) : null, url2 ? loadBuf(url2) : null]);
+  if (state !== 'result') return;                                   // пока грузилось, нажали НАЗАД
   const t0 = ac.currentTime + .08;
-  const el = (u, out) => { const m = new Audio(u); m.loop = true; m.crossOrigin = 'anonymous'; ac.createMediaElementSource(m).connect(out); return m; };
-  if (url) media = el(url, gainA); else synth = makeBeat(gainA, 0, t0);
-  if (url2) mediaB = el(url2, gainB); else synthB = makeBeat(gainB, 1, t0);
-  [media, mediaB].forEach(m => m && m.play());
+  const src = (b, out) => { const sn = ac.createBufferSource(); sn.buffer = b; sn.loop = true; sn.connect(out); sn.start(t0); return sn; };
+  if (ba) media = src(ba, gainA); else synth = makeBeat(gainA, 0, t0);
+  if (bb) mediaB = src(bb, gainB); else synthB = makeBeat(gainB, 1, t0);
   drawEq();
 }
 function stopAll() {
   cancelAnimationFrame(eqRaf); stopBg();
-  if (media) { media.pause(); media = null; }
-  if (mediaB) { mediaB.pause(); mediaB = null; }
+  if (media) { try { media.stop(); } catch (e) {} media = null; }
+  if (mediaB) { try { mediaB.stop(); } catch (e) {} mediaB = null; }
   if (synth) { synth.stop(); synth = null; }
   if (synthB) { synthB.stop(); synthB = null; }
 }

@@ -44,17 +44,22 @@ def tempo_and_phase(env, fps, bpm0, span=0.06, step=0.01):
     return best[1], best[2] * 1000, best[0], float(np.median(scores))
 
 
-ap = argparse.ArgumentParser(); ap.add_argument('files', nargs='+'); ap.add_argument('--bpm', type=float, default=124)
-a = ap.parse_args()
-rows = []
-for f in a.files:
-    x, sr = load(f); env, fps = onset_env(x, sr)
-    bpm, off, score, med = tempo_and_phase(env, fps, a.bpm)
-    beats = len(x) / sr / (60 / bpm)
-    rows.append((f, bpm, off))
-    print(f'{f}\n   длина {len(x) / sr:6.2f} с = {beats:6.2f} долей   темп {bpm:7.2f} BPM (задан {a.bpm:g}, отклонение {100 * (bpm / a.bpm - 1):+.2f} %)'
-          f'   первая доля +{off:5.1f} мс   контраст {score:.2f} (фон {med:.2f})')
-if len(rows) == 2:
-    period = 60000 / a.bpm; d = (rows[0][2] - rows[1][2] + period / 2) % period - period / 2
-    drift = abs(rows[0][1] - rows[1][1]) / a.bpm * 30000
-    print(f'разница сдвига первой доли: {d:+.1f} мс;  расхождение из-за разницы темпов за 30 с: {drift:.0f} мс')
+def main():
+    ap = argparse.ArgumentParser(); ap.add_argument('files', nargs='+'); ap.add_argument('--bpm', type=float, default=124)
+    a = ap.parse_args()
+    rows = []
+    for f in a.files:
+        x, sr = load(f); env, fps = onset_env(x, sr)
+        bpm, off, score, med = tempo_and_phase(env, fps, a.bpm)
+        beats = len(x) / sr / (60 / bpm)
+        rows.append((f, bpm, off))
+        print(f'{f}\n   длина {len(x) / sr:6.2f} с = {beats:6.2f} долей   темп {bpm:7.2f} BPM (задан {a.bpm:g}, отклонение {100 * (bpm / a.bpm - 1):+.2f} %)'
+              f'   первая доля +{off:5.1f} мс   контраст {score:.2f} (фон {med:.2f})')
+    if len(rows) == 2:
+        period = 60000 / a.bpm; d = (rows[0][2] - rows[1][2] + period / 2) % period - period / 2
+        drift = abs(rows[0][1] - rows[1][1]) / a.bpm * 30000
+        print(f'разница сдвига первой доли: {d:+.1f} мс;  расхождение из-за разницы темпов за 30 с: {drift:.0f} мс')
+
+
+if __name__ == '__main__':
+    main()
