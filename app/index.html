@@ -229,8 +229,9 @@ const DATA = {
   ],
   // у профиля: track и track2 — две половины одного трека (A = ударные + бас, B = остальное), фейдер деки переливает
   // между ними, середина = полный трек; null — синтез. house / techno / disco / dnb — ACE-Step + Demucs (tools/make_tracks.py)
+  testPairs: [{ a: 'audio/suno1_a.ogg', b: 'audio/suno1_b.ogg' }],   // временно: лишние пары для кнопки ПАРА
   bgTrack: null,            // тихий фон на вопросах (URL); null — синтетический пад
-  samples: { kick: 'audio/kick.ogg', hat: 'audio/hat.ogg', clap: 'audio/clap.ogg', snare: 'audio/snare.ogg', tom: 'audio/tom.ogg', crash: 'audio/crash.ogg', horn: 'audio/horn.ogg', laser: 'audio/laser.ogg' },   // семплы (tools/make_samples.py); null — синтез
+  samples: { kick: 'audio/kick.ogg', hat: 'audio/hat.ogg', clap: 'audio/clap.ogg', snare: 'audio/snare.ogg', tamb: 'audio/tamb.ogg', crash: 'audio/crash.ogg', cymbal: 'audio/cymbal.ogg', horn: 'audio/horn.ogg' },   // семплы с Pixabay через tools/prep_samples.py; null — синтез
   dwellMs: 2000,            // задержался на секции — выбор
   settleMs: 600,            // пауза после выбора перед следующим вопросом
   flickVel: 14,             // градусов за кадр при отпускании — резкий рывок, включается рулетка
@@ -261,7 +262,7 @@ $('#fakeRim').style.display = 'none';
 /* ───────── РАСКЛАДКА ПО ФОТО ПУЛЬТА (layout.js из tools/build_bg.py) ───────── */
 const L = typeof LAYOUT !== 'undefined' ? LAYOUT : null;
 const PADS = [['kick', 'KICK', '#2fd85a'], ['hat', 'HAT', '#e8e14a'], ['clap', 'CLAP', '#ff7a3b'], ['snare', 'SNARE', '#4a9bff'],
-              ['tom', 'TOM', '#c77dff'], ['crash', 'CRASH', '#e8e8ea'], ['horn', 'HORN', '#ff4d6d'], ['laser', 'LASER', '#3de0d0']];
+              ['tamb', 'TAMB', '#c77dff'], ['crash', 'CRASH', '#e8e8ea'], ['cymbal', 'CYMBAL', '#3de0d0'], ['horn', 'HORN', '#ff4d6d']];
 const leds = [];                // столбики светодиодов: {els сверху вниз, v}
 const IMG = {};                 // при сборке в один файл pack_single_file.py кладёт сюда data-URI картинок
 function addPad(i, x, y, w, h) {

@@ -305,3 +305,11 @@ dnb 174», скачаны пользователем в `tools/out/music/new/`, 
 Пары ACE-Step и первые пробы Suno убраны в `tools/out/music/ace_pairs`; `testPairs` удалён,
 кнопка «ПАРА»/N перебирает четыре пары профилей. Для стенда треки бесплатного тарифа
 использовать нельзя — перегенерить на платном теми же стилями.
+
+Семплы с Pixabay (03.10). Пользователь сам скачал 7 one-shot'ов (kick, open hat, clap,
+dubstep snare, tambourine, два crash) в `tools/out/music/new/` (копии в `tools/out/samples/`).
+`tools/prep_samples.py имя=файл …`: обрезка тишины (−45 дБ в начале, −60 дБ в конце, спад 30 мс,
+не длиннее 2,5 с), громкость по самому громкому окну 100 мс → −12 дБFS, пик ≤ −1 дБ (у тамбурина
+пик режет громкость до −19). Пады теперь KICK HAT CLAP SNARE TAMB CRASH CYMBAL HORN (хорн пока
+синтезированный, `tools/out/samples/horn_synth.ogg`). Пара SUNO1 (первая проба) возвращена в
+переключатель через `testPairs`.

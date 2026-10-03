@@ -6,7 +6,7 @@
    Работает в Chrome / Edge (ПК, Android) по https или localhost; в Safari и на iOS Web MIDI нет. */
 const MIDI = (() => {
   const KEY = 'djw-midi-profiles-v1';
-  const PAD_NAMES = ['KICK', 'HAT', 'CLAP', 'SNARE', 'TOM', 'CRASH', 'HORN', 'LASER'];
+  const PAD_NAMES = ['KICK', 'HAT', 'CLAP', 'SNARE', 'TAMB', 'CRASH', 'CYMBAL', 'HORN'];
   // коды левого дека DDJ-FLX6 — из маппинга Mixxx (7200 тиков на оборот, значение − 64)
   const flx6Jog = { enc: 'offset', sign: 1, deg: 0.05 };
   const KNOWN = [
