@@ -216,12 +216,13 @@ const DATA = {
     })),
   })),
   profiles: [
-    { name: 'THE SELECTOR',  text: 'Описание-заглушка профиля A. Здесь будет два-три предложения о том, какой ты диджей и чем берёшь танцпол.', track: 'audio/track_a.ogg', track2: 'audio/track_b.ogg' },
-    { name: 'THE TECHNICIAN', text: 'Описание-заглушка профиля B. Точность, свод по битам и чистые переходы — твоя стихия.', track: 'audio/track_a.ogg', track2: 'audio/track_b.ogg' },
-    { name: 'THE CROWD READER', text: 'Описание-заглушка профиля C. Ты чувствуешь зал раньше, чем он сам понимает, чего хочет.', track: 'audio/track_a.ogg', track2: 'audio/track_b.ogg' },
-    { name: 'THE EXPERIMENTER', text: 'Описание-заглушка профиля D. Жанры для тебя не правила, а сырьё.', track: 'audio/track_a.ogg', track2: 'audio/track_b.ogg' },
+    { name: 'THE SELECTOR',  text: 'Описание-заглушка профиля A. Здесь будет два-три предложения о том, какой ты диджей и чем берёшь танцпол.', track: 'audio/suno2_a.ogg', track2: 'audio/suno2_b.ogg' },
+    { name: 'THE TECHNICIAN', text: 'Описание-заглушка профиля B. Точность, свод по битам и чистые переходы — твоя стихия.', track: 'audio/suno2_a.ogg', track2: 'audio/suno2_b.ogg' },
+    { name: 'THE CROWD READER', text: 'Описание-заглушка профиля C. Ты чувствуешь зал раньше, чем он сам понимает, чего хочет.', track: 'audio/suno1_a.ogg', track2: 'audio/suno1_b.ogg' },
+    { name: 'THE EXPERIMENTER', text: 'Описание-заглушка профиля D. Жанры для тебя не правила, а сырьё.', track: 'audio/suno1_a.ogg', track2: 'audio/suno1_b.ogg' },
   ],
-  // у профиля: track и track2 — два сведённых трека финала (URL), фейдер деки переливает между ними; null — синтез
+  // у профиля: track и track2 — две половины одного трека (A = ударные + бас, B = остальное), фейдер деки переливает
+  // между ними, середина = полный трек; null — синтез. Пока профили 1–2 на suno2, 3–4 на suno1
   bgTrack: null,            // тихий фон на вопросах (URL); null — синтетический пад
   samples: { kick: null, hat: null, clap: null, snare: null, tom: null, crash: null, horn: null, laser: null },   // URL семплов; null — синтез
   dwellMs: 2000,            // задержался на секции — выбор
