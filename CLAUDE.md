@@ -313,3 +313,21 @@ dubstep snare, tambourine, два crash) в `tools/out/music/new/` (копии �
 пик режет громкость до −19). Пады теперь KICK HAT CLAP SNARE TAMB CRASH CYMBAL HORN (хорн пока
 синтезированный, `tools/out/samples/horn_synth.ogg`). Пара SUNO1 (первая проба) возвращена в
 переключатель через `testPairs`.
+
+## Мост в Resolume и grandMA (19.10.2026)
+
+Заказчик: нажатия падов должны уходить и в Resolume, и в grandMA onPC; всё на одном ПК,
+что именно триггерить — не решено, деки на руках нет. Сделано универсально:
+`tools/bridge.py` (только stdlib) — HTTP на `localhost:7777/ev`, страница шлёт туда события
+POST'ом (`emit()` в index.html: pad n/name, play, cue, start, state, answer q/choice,
+profile idx/col/name/genre, mix v (не чаще 50 мс), back; jog пока не шлётся), мост по
+`tools/bridge.json` рассылает OSC (кодирует сам) в `targets` и MIDI в виртуальный порт
+(winmm). Запуск — `tools/bridge.cmd`: создаёт пару «DJ Wheel Out A/B» и держит мост с логом;
+Resolume/MA слушают «DJ Wheel Out B» как MIDI-контроллер. Карта по умолчанию: пад n →
+Resolume `/composition/layers/1/clips/n/connect 1`, MA `/gma3/cmd "Go+ Executor n"`, нота n;
+профиль → колонка col и экзекьютор 4col; старт/назад → колонка 5, экзекьюторы 21/22;
+ответы → экзекьюторы 31–35; PLAY/CUE → 11/12; mix → opacity слоя 1 и CC1. Resolume: OSC In
+порт 7000 (Preferences → OSC); grandMA3: Menu → Network → OSC, вход 8000, префикс gma3;
+grandMA2 3.3+ — адреса `/gma2/…` (поменять в json). Проверка без программ:
+`tools/osc_listen.py 7000 8000` + `tools/midi_listen.py` — прогон игры дал все события
+на обоих OSC-портах и ноты на MIDI-порту. В Resolume и MA вживую не проверено.

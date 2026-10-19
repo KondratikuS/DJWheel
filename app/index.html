@@ -417,8 +417,18 @@ function snapTo(i) {
 
 /* ───────── СЦЕНАРИЙ ───────── */
 let qi = 0, scores = [0, 0, 0, 0];
+/* ───────── МОСТ: события игры наружу (tools/bridge.py → Resolume, grandMA, MIDI) ─────────
+   POST text/plain без CORS-преамбулы, не ждём ответа; моста нет — молчим. */
+const BRIDGE = { url: 'http://localhost:7777/ev', on: true };
+let emitMixT = 0;
+function emit(ev) {
+  if (!BRIDGE.on) return;
+  try { fetch(BRIDGE.url, { method: 'POST', body: JSON.stringify(ev), headers: { 'Content-Type': 'text/plain' }, keepalive: true }).catch(() => {}); } catch (e) {}
+}
+
 function showStart() {
-  state = 'start'; qi = 0; scores = [0, 0, 0, 0]; locked = false;
+  if (state === 'result') emit({ ev: 'back' });
+  state = 'start'; qi = 0; scores = [0, 0, 0, 0]; locked = false; emit({ ev: 'state', state: 'start' });
   stopAll(); platter.classList.remove('spin'); platter.style.transition = 'none'; setRot(0); selected = -1;
   segs.forEach(s => s.g.classList.remove('on', 'pick'));
   display.classList.remove('eq'); result.classList.remove('show'); ring.classList.add('hidden');
@@ -429,7 +439,7 @@ function showStart() {
   hint.textContent = 'жми старт';
 }
 function showQuestion() {
-  state = 'question'; locked = false; const q = DATA.questions[qi];
+  state = 'question'; emit({ ev: 'state', state: 'question', q: qi + 1 }); locked = false; const q = DATA.questions[qi];
   ring.classList.remove('hidden'); fillRing(q.options);
   tag.textContent = `ВОПРОС ${qi + 1} / ${DATA.questions.length}`; question.textContent = q.text;
   btn.textContent = `${qi + 1}/${DATA.questions.length}`; btn.className = 'hub';
@@ -438,18 +448,19 @@ function showQuestion() {
 }
 function commit() {
   if (selected < 0 || locked) return;
-  locked = true; const i = selected;
+  locked = true; const i = selected; emit({ ev: 'answer', q: qi + 1, choice: i + 1 });
   segs[i].g.classList.add('pick'); blip();
   DATA.questions[qi].options[i].score.forEach((v, p) => scores[p] += v);
   setTimeout(() => { qi++; qi < DATA.questions.length ? showQuestion() : showResult(); }, DATA.settleMs);
 }
 function showResult() {
-  state = 'result';
+  state = 'result'; emit({ ev: 'state', state: 'result' });
   ring.classList.add('hidden'); btn.className = 'hidden'; hint.textContent = ''; setLeds(0);
   tag.textContent = 'АНАЛИЗ'; question.textContent = 'СОБИРАЕМ ТВОЙ СЕТ…';
   fadeBg();
   const max = Math.max(...scores); const best = scores.map((v, i) => v === max ? i : -1).filter(i => i >= 0);
   const p = DATA.profiles[best[Math.floor(Math.random() * best.length)]];
+  const pidx = DATA.profiles.indexOf(p); emit({ ev: 'profile', idx: pidx, col: pidx + 1, name: p.name, genre: (String(p.track).match(/([a-z0-9]+)_a\.ogg/i) || [])[1] || '' });
   setTimeout(() => {
     platter.style.transition = 'none'; platter.classList.add('spin');
     padsShowcase();
@@ -470,7 +481,7 @@ function goFullscreen() {
   if (rq && !document.fullscreenElement && !document.webkitFullscreenElement) { try { const p = rq.call(el, { navigationUI: 'hide' }); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
   if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
 }
-btn.addEventListener('click', () => { if (state === 'start') { goFullscreen(); ensureAudio(); preloadTracks(); startBg(); showQuestion(); } });
+btn.addEventListener('click', () => { if (state === 'start') { goFullscreen(); ensureAudio(); preloadTracks(); startBg(); showQuestion(); emit({ ev: 'start' }); } });
 back.addEventListener('click', showStart);
 $$('.pad').forEach(p => {
   p.addEventListener('pointerdown', () => { playSample(p.dataset.s); p.classList.add('hit'); setTimeout(() => p.classList.remove('hit'), 120); });
@@ -498,7 +509,8 @@ function fadeBg() { if (!ac) return; ramp(bgGain, 0, 2); setTimeout(stopBg, 2100
 function stopBg() { if (bgMedia) { bgMedia.pause(); bgMedia = null; } if (bgSynth) { bgSynth.stop(); bgSynth = null; } }
 // финал: два сведённых трека стартуют разом, фейдер микса переливает один в другой (равная мощность)
 function setMix(x) {
-  mix = Math.max(0, Math.min(1, x)); if (!ac) return;
+  mix = Math.max(0, Math.min(1, x));
+  const now = performance.now(); if (now - emitMixT > 50) { emitMixT = now; emit({ ev: 'mix', v: +mix.toFixed(3) }); } if (!ac) return;
   gainA.gain.setTargetAtTime(Math.cos(mix * Math.PI / 2), ac.currentTime, .02);
   gainB.gain.setTargetAtTime(Math.sin(mix * Math.PI / 2), ac.currentTime, .02);
 }
@@ -534,6 +546,7 @@ function playSample(name, vol = 1) {
   ensureAudio();
   const out = ac.createGain(); out.gain.value = vol; out.connect(master);
   const url = DATA.samples[name];
+  if (!url || sampleBuf[name]) emit({ ev: 'pad', n: PADS.findIndex(p => p[0] === name) + 1, name });   // один раз на удар, не на догрузку файла
   if (url) {
     if (sampleBuf[name]) { const s = ac.createBufferSource(); s.buffer = sampleBuf[name]; s.connect(out); s.start(); }
     else fetch(url).then(r => r.arrayBuffer()).then(b => ac.decodeAudioData(b)).then(b => { sampleBuf[name] = b; playSample(name); });

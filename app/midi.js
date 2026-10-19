@@ -79,10 +79,11 @@ const MIDI = (() => {
   }
   // PLAY — старт, CUE — назад на финале; если CUE не привязан, назад делает PLAY
   function play(p) {
+    emit({ ev: 'play' });
     if (state === 'start') { btn.click(); setTimeout(soundHint, 400); }
     else if (!p.cue) cue();
   }
-  function cue() { if (state === 'result' && back.classList.contains('show')) showStart(); }
+  function cue() { emit({ ev: 'cue' }); if (state === 'result' && back.classList.contains('show')) showStart(); }
 
   // диагностика (клавиша D): что пришло и что игра с этим сделала
   let dbg = null;
