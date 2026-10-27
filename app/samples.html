@@ -27,8 +27,10 @@
 <label><input type="range" id="vol" min="0" max="1" step="0.01" value="0.8"> громкость</label>
 <script>
 const DECK1 = ['kick', 'hat', 'clap', 'snare', 'tamb', 'crash', 'cymbal', 'horn'];
-const DECK2 = ['laser', 'scratch', 'siren', 'cowbell', 'rim', 'hey', 'drop', 'whoosh'];
-const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i'];
+const DECK2 = ['laser', 'hit', 'zap', 'cowbell', 'rim', 'yeah', 'drop', 'whoosh'];
+const CAND = [];
+const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'a', 's', 'd', 'f', 'g', 'h'];
+const ALL = [...DECK1, ...DECK2, ...CAND];
 const ac = new (window.AudioContext || window.webkitAudioContext)(); const master = ac.createGain(); master.connect(ac.destination);
 document.getElementById('vol').oninput = e => master.gain.value = +e.target.value; master.gain.value = .8;
 const bufs = {}; const pads = {};
@@ -38,12 +40,12 @@ function play(n) {
   const s = ac.createBufferSource(); s.buffer = b; s.connect(master); s.start();
   const el = pads[n]; el.classList.add('hit'); setTimeout(() => el.classList.remove('hit'), 150);
 }
-[...DECK1, ...DECK2].forEach((n, i) => {
+ALL.forEach((n, i) => {
   const b = document.createElement('button'); b.className = 'pad'; b.innerHTML = `${n.toUpperCase()}<em>${KEYS[i].toUpperCase()}</em>`;
-  b.onpointerdown = () => play(n); document.getElementById(i < 8 ? 'deck1' : 'deck2').appendChild(b); pads[n] = b;
+  b.onpointerdown = () => play(n); document.getElementById(i < 8 ? 'deck1' : i < 16 ? 'deck2' : 'cand').appendChild(b); pads[n] = b;
   load(n).then(() => { b.querySelector('em').textContent += ' · ' + bufs[n].duration.toFixed(2) + ' с'; }, () => { b.style.opacity = .4; b.title = 'файла нет'; });
 });
-addEventListener('keydown', e => { const i = KEYS.indexOf(e.key.toLowerCase()); if (i >= 0 && !e.repeat) play([...DECK1, ...DECK2][i]); });
+addEventListener('keydown', e => { const i = KEYS.indexOf(e.key.toLowerCase()); if (i >= 0 && !e.repeat) play(ALL[i]); });
 </script>
 </body>
 </html>
