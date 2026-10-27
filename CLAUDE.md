@@ -331,3 +331,12 @@ Resolume `/composition/layers/1/clips/n/connect 1`, MA `/gma3/cmd "Go+ Executor 
 grandMA2 3.3+ — адреса `/gma2/…` (поменять в json). Проверка без программ:
 `tools/osc_listen.py 7000 8000` + `tools/midi_listen.py` — прогон игры дал все события
 на обоих OSC-портах и ноты на MIDI-порту. В Resolume и MA вживую не проверено.
+
+Вторая дека (27.10.2026). Пады 9–16: LASER SCRATCH SIREN COWBELL RIM HEY DROP WHOOSH, плюс HORN на
+первой деке заменён настоящим эйр-хорном. Все с Pixabay; кнопка Download через расширение не
+работает (и curl на страницы — 403), зато после запуска плеера на странице звука у `<audio>`
+появляется прямой адрес `cdn.pixabay.com/audio/…mp3`, который curl отдаёт — так и качали
+(исходники и ссылки: `tools/out/samples2/`, `SOURCES.txt`). Подготовка — `prep_samples.py --max 2`.
+В игре `PADS` 16 штук, на финале два ряда по восемь (верх — дека 1, низ — дека 2, `PAD_TARGET`),
+«дом» падов 9–16 — те же места на фото. В `midi.js` 16 имён, у FLX6 пады второго дека
+`99:00..07`, в мастере 16 шагов падов (индекс `s.slice(3)` — двузначный).
