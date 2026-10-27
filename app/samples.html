@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Стенд семплов</title>
+<style>
+  body { margin: 0; padding: 24px; background: #121316; color: #e8e8ea; font: 16px/1.4 'Segoe UI', sans-serif; user-select: none; }
+  h2 { margin: 0 0 4px; } h3 { margin: 22px 0 10px; color: #9aa0aa; font-weight: 500; }
+  small { color: #7d838d; }
+  .grid { display: grid; grid-template-columns: repeat(8, minmax(90px, 1fr)); gap: 10px; max-width: 1100px; }
+  .pad { height: 86px; border-radius: 8px; border: 2px solid #3d7dff; background: #05080f; color: #9db9ff; font-weight: 700; cursor: pointer;
+         display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+  .pad em { font: 12px monospace; color: #6f86b8; }
+  .pad:active, .pad.hit { background: #2fd85a; color: #06120a; }
+  .pad.hit em { color: #06120a; }
+  label { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; color: #9aa0aa; }
+</style>
+</head>
+<body>
+<h2>Стенд семплов</h2>
+<small>Клик или клавиши: верхний ряд — 1…8, нижний — Q…I. Файлы из <code>app/audio</code>, те же, что в игре.</small>
+<h3>Дека 1 — пады 1–8</h3>
+<div class="grid" id="deck1"></div>
+<h3>Дека 2 — пады 9–16</h3>
+<div class="grid" id="deck2"></div>
+<label><input type="range" id="vol" min="0" max="1" step="0.01" value="0.8"> громкость</label>
+<script>
+const DECK1 = ['kick', 'hat', 'clap', 'snare', 'tamb', 'crash', 'cymbal', 'horn'];
+const DECK2 = ['laser', 'scratch', 'siren', 'cowbell', 'rim', 'hey', 'drop', 'whoosh'];
+const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i'];
+const ac = new (window.AudioContext || window.webkitAudioContext)(); const master = ac.createGain(); master.connect(ac.destination);
+document.getElementById('vol').oninput = e => master.gain.value = +e.target.value; master.gain.value = .8;
+const bufs = {}; const pads = {};
+async function load(n) { bufs[n] = await fetch('audio/' + n + '.ogg').then(r => r.arrayBuffer()).then(b => ac.decodeAudioData(b)); }
+function play(n) {
+  ac.resume(); const b = bufs[n]; if (!b) return;
+  const s = ac.createBufferSource(); s.buffer = b; s.connect(master); s.start();
+  const el = pads[n]; el.classList.add('hit'); setTimeout(() => el.classList.remove('hit'), 150);
+}
+[...DECK1, ...DECK2].forEach((n, i) => {
+  const b = document.createElement('button'); b.className = 'pad'; b.innerHTML = `${n.toUpperCase()}<em>${KEYS[i].toUpperCase()}</em>`;
+  b.onpointerdown = () => play(n); document.getElementById(i < 8 ? 'deck1' : 'deck2').appendChild(b); pads[n] = b;
+  load(n).then(() => { b.querySelector('em').textContent += ' · ' + bufs[n].duration.toFixed(2) + ' с'; }, () => { b.style.opacity = .4; b.title = 'файла нет'; });
+});
+addEventListener('keydown', e => { const i = KEYS.indexOf(e.key.toLowerCase()); if (i >= 0 && !e.repeat) play([...DECK1, ...DECK2][i]); });
+</script>
+</body>
+</html>
