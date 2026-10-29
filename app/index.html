@@ -403,8 +403,10 @@ registerProcessor('vinyl', Vinyl);`;
 let vinyl = null, vinylReady = null, vpos = 0, vrate = 1, vt = 0, vRaf = 0, vBase = 0, pair = null;
 function loadVinyl() {
   if (vinylReady || !ac.audioWorklet) return;
-  const url = URL.createObjectURL(new Blob([VINYL_SRC], { type: 'application/javascript' }));
-  vinylReady = ac.audioWorklet.addModule(url).then(() => {
+  // С диска (file://) Chrome не грузит модуль из blob: («blob:null» — чужой origin), зато берёт data: — пробуем оба
+  const urls = [URL.createObjectURL(new Blob([VINYL_SRC], { type: 'application/javascript' })),
+                'data:application/javascript;charset=utf-8,' + encodeURIComponent(VINYL_SRC)];
+  vinylReady = ac.audioWorklet.addModule(urls[0]).catch(() => ac.audioWorklet.addModule(urls[1])).then(() => {
     vinyl = new AudioWorkletNode(ac, 'vinyl', { numberOfInputs: 0, outputChannelCount: [2] });
     vinyl.connect(eqLow); setMix(mix); vinylRate(baseRate(), 50);
     vinyl.port.onmessage = e => {
