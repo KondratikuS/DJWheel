@@ -1,32 +1,156 @@
 {
-  "_": "Карта событий игры → Resolume / grandMA (OSC) и MIDI. Подстановки: {n} {name} {state} {idx} {col} {genre} {on} {v} {v127}. Пустой список — не слать.",
+  "_": "Карта событий игры → Resolume / grandMA (OSC) и MIDI. Правится в игре: шестерёнка → ВЫХОДЫ. Подстановки {поле} из события, {v127} — 0..1 → 0..127.",
   "http_port": 7777,
   "targets": {
-    "resolume": { "host": "127.0.0.1", "port": 7000, "_": "Arena → Preferences → OSC → Enable OSC Input, порт 7000" },
-    "ma":       { "host": "127.0.0.1", "port": 8000, "_": "grandMA3: Menu → Network → OSC, вход 8000, префикс gma3. grandMA2 (3.3+): Setup → Network → OSC, адреса /gma2/…" }
+    "resolume": {
+      "host": "127.0.0.1",
+      "port": 7000,
+      "_": "Arena → Preferences → OSC → Enable OSC Input, порт 7000"
+    },
+    "ma": {
+      "host": "127.0.0.1",
+      "port": 8000,
+      "_": "grandMA3: Menu → Network → OSC, вход 8000, префикс gma3. grandMA2 (3.3+): Setup → Network → OSC, адреса /gma2/…"
+    }
   },
   "midi_out": "DJ Wheel Out A",
   "_midi": "виртуальный порт (tools/midi_loop.cmd создаёт пару); Resolume и MA слушают «DJ Wheel Out B» как MIDI-контроллер",
   "map": {
-    "pad":     [ { "to": "resolume", "addr": "/composition/layers/1/clips/{n}/connect", "args": [1] },
-                 { "to": "ma", "addr": "/gma3/cmd", "args": ["Go+ Executor {n}"] },
-                 { "midi": [144, "{n}", 127], "off_ms": 120 } ],
-    "play":    [ { "to": "ma", "addr": "/gma3/cmd", "args": ["Go+ Executor 11"] }, { "midi": [144, 11, 127], "off_ms": 120 } ],
-    "cue":     [ { "to": "ma", "addr": "/gma3/cmd", "args": ["Go+ Executor 12"] }, { "midi": [144, 12, 127], "off_ms": 120 } ],
-    "start":   [ { "to": "resolume", "addr": "/composition/columns/5/connect", "args": [1] },
-                 { "to": "ma", "addr": "/gma3/cmd", "args": ["Go+ Executor 21"] }, { "midi": [144, 21, 127], "off_ms": 120 } ],
-    "state":   [],
-    "select":  [],
+    "pad": [
+      {
+        "to": "resolume",
+        "addr": "/composition/layers/1/clips/{n}/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor {n}"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          "{n}",
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "start": [
+      {
+        "to": "resolume",
+        "addr": "/composition/columns/5/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 21"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          21,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "play": [
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 11"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          11,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "pause": [
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 12"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          12,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "cue": [],
+    "pair": [
+      {
+        "to": "resolume",
+        "addr": "/composition/columns/{a}/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 4{a}"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          "4{a}",
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "next": [],
     "scratch": [],
-    "pair":    [ { "to": "ma", "addr": "/gma3/cmd", "args": ["Go+ Executor 4{a}"] }, { "midi": [144, "4{a}", 127], "off_ms": 120 } ],
-    "next":    [],
-    "tempo":   [],
-    "chan":    [ { "midi": [176, "1{n}", "{v127}"] } ],
-    "track":   [ { "to": "resolume", "addr": "/composition/columns/{col}/connect", "args": [1] },
-                 { "to": "ma", "addr": "/gma3/cmd", "args": ["Go+ Executor 4{col}"] }, { "midi": [144, "4{col}", 127], "off_ms": 120 } ],
-    "back":    [ { "to": "resolume", "addr": "/composition/columns/5/connect", "args": [1] },
-                 { "to": "ma", "addr": "/gma3/cmd", "args": ["Go+ Executor 22"] }, { "midi": [144, 22, 127], "off_ms": 120 } ],
-    "mix":     [ { "to": "resolume", "addr": "/composition/layers/1/video/opacity", "args": ["{v}"] }, { "midi": [176, 1, "{v127}"] } ],
-    "jog":     []
+    "mix": [
+      {
+        "to": "resolume",
+        "addr": "/composition/layers/1/video/opacity",
+        "args": [
+          "{v}"
+        ]
+      },
+      {
+        "midi": [
+          176,
+          1,
+          "{v127}"
+        ]
+      }
+    ],
+    "tempo": [],
+    "chan": [
+      {
+        "midi": [
+          176,
+          "1{n}",
+          "{v127}"
+        ]
+      }
+    ],
+    "state": []
   }
 }

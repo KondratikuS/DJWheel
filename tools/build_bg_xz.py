@@ -64,6 +64,10 @@ layout['jog'] = layout['jogs'][0]; layout['screen'] = SCREEN_R / JOGS[0][2]
 def vslider(x, y0, y1, knob):
     fx, fy0 = to_frame(x, y0); _, fy1 = to_frame(x, y1); return {'x': fx / W, 'y0': fy0 / H, 'y1': fy1 / H, 'kw': knob[0] * S / W, 'kh': knob[1] * S / H}
 layout['chans'] = [vslider(x, CH_Y0, CH_Y1, CH_KNOB) for x in CH_X]
+BTN_R = 62                                               # кнопки PLAY/PAUSE (зелёное кольцо) и CUE (оранжевое) на деках, по цвету на фото
+def circle(x, y): fx, fy = to_frame(x, y); return {'x': fx / W, 'y': fy / H, 'r': BTN_R * S / H}
+layout['play'] = [circle(141, 1503), circle(2116, 1503)]
+layout['cue'] = [circle(141, 1346), circle(2116, 1346)]
 layout['tempo'] = [vslider(x, TEMPO_Y0, TEMPO_Y1, TEMPO_KNOB) for x in TEMPO_X]
 x0, y0 = to_frame(DISPLAY[0], DISPLAY[1]); x1, y1 = to_frame(DISPLAY[2], DISPLAY[3])
 layout['display'] = {'x': x0 / W, 'y': y0 / H, 'w': (x1 - x0) / W, 'h': (y1 - y0) / H}

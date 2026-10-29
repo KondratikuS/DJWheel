@@ -106,11 +106,23 @@ def main():
         def _ok(self):
             self.send_response(204); self.send_header('Access-Control-Allow-Origin', '*'); self.end_headers()
         def do_OPTIONS(self): self._ok()
+        def _json(self, obj, code=200):
+            body = json.dumps(obj, ensure_ascii=False).encode()
+            self.send_response(code); self.send_header('Content-Type', 'application/json'); self.send_header('Access-Control-Allow-Origin', '*'); self.end_headers(); self.wfile.write(body)
         def do_GET(self):
-            body = json.dumps({'ok': True, 'targets': br.targets, 'midi': bool(br.midi.h)}).encode()
-            self.send_response(200); self.send_header('Content-Type', 'application/json'); self.send_header('Access-Control-Allow-Origin', '*'); self.end_headers(); self.wfile.write(body)
+            if self.path.startswith('/config'): return self._json(br.cfg)                 # страница настроек читает карту
+            self._json({'ok': True, 'targets': br.targets, 'midi': bool(br.midi.h)})
         def do_POST(self):
-            n = int(self.headers.get('Content-Length', 0)); raw = self.rfile.read(n); self._ok()
+            n = int(self.headers.get('Content-Length', 0)); raw = self.rfile.read(n)
+            if self.path.startswith('/config'):                                             # страница настроек сохраняет карту
+                try: new = json.loads(raw.decode('utf-8'))
+                except ValueError as e: return self._json({'ok': False, 'error': str(e)}, 400)
+                if not isinstance(new.get('map'), dict) or not isinstance(new.get('targets'), dict): return self._json({'ok': False, 'error': 'нужны map и targets'}, 400)
+                Path(a.config).write_text(json.dumps(new, ensure_ascii=False, indent=2), encoding='utf-8')
+                br.cfg = new; br.targets = new.get('targets', {})
+                if new.get('midi_out') != cfg.get('midi_out'): br.midi = MidiOut(new.get('midi_out'))
+                cfg.clear(); cfg.update(new); print('карта сохранена'); return self._json({'ok': True})
+            self._ok()
             try: ev = json.loads(raw or b'{}')
             except ValueError: return
             if a.verbose: print(time.strftime('%H:%M:%S'), ev)

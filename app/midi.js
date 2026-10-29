@@ -77,7 +77,7 @@ const MIDI = (() => {
     playSample(b.dataset.s); b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 120);
   }
   // PLAY — запуск (звук включится только после касания экрана), CUE — следующая пара
-  function play(p) { emit({ ev: 'play' }); if (state === 'idle') { ensureAudio(); preloadSamples(); startPlay(); setTimeout(soundHint, 400); } }
+  function play(p) { togglePlay(); setTimeout(soundHint, 400); }
   function cue() { emit({ ev: 'cue' }); nextPair(); }
 
   // диагностика (клавиша D): что пришло и что игра с этим сделала
@@ -165,7 +165,7 @@ const MIDI = (() => {
   document.head.appendChild(Object.assign(document.createElement('style'), { textContent: css }));
   const dot = Object.assign(document.createElement('div'), { id: 'midiDot' }); $('#frame').appendChild(dot);
 
-  function openWizard(name) {
+  function openWizard(name, only) {           // only — один шаг (переучить одну кнопку из настроек)
     if (wiz) return;
     // открыт вручную — имени нет: привяжемся к порту, с которого придёт первый сигнал
     const el = document.createElement('div'); el.id = 'midiWiz';
@@ -175,7 +175,7 @@ const MIDI = (() => {
     $('#frame').appendChild(el);
     const q = s => el.querySelector(s);
     const p = { jog: {}, touch: null, pads: [], play: null, cue: null, fader: null, vol: null, low: null, mid: null, high: null, tempo: null }; let had = false;
-    const steps = ['wheel', 'check', ...PAD_NAMES.map((_, i) => 'pad' + i), 'play', 'cue', ...Object.keys(CTRL), 'done'];
+    const steps = only ? (only === 'wheel' ? ['wheel', 'check', 'done'] : [only, 'done']) : ['wheel', 'check', ...PAD_NAMES.map((_, i) => 'pad' + i), 'play', 'cue', ...Object.keys(CTRL), 'done'];
     let si = 0, cc = {}, notes = {}, timer = 0, acc = 0, accT = 0; const chk = {};
     const used = () => [...Object.keys(p.jog), p.touch, ...p.pads, p.play, p.cue, ...Object.keys(CTRL).map(c => p[c] && p[c].key)].filter(Boolean);
     function show() {
@@ -189,8 +189,8 @@ const MIDI = (() => {
       else if (s === 'check') { acc = 0; q('h2').textContent = 'ПРОВЕРКА'; q('.ask').textContent = 'Поверни диск на четверть оборота — сначала взявшись за верх, потом за обод. Здесь должно быть около 90°. Если заметно больше или меньше, поправь кнопками.'; q('.got').textContent = '0°';
         if (!Object.keys(p.jog).length) return next(); }
       else if (s.startsWith('pad')) { const i = +s.slice(3); q('h2').textContent = 'ПАД ' + PAD_NAMES[i]; q('.ask').textContent = `Нажми кнопку на деке, которая будет играть ${PAD_NAMES[i]}.`; }
-      else if (s === 'play') { q('h2').textContent = 'КНОПКА PLAY'; q('.ask').textContent = 'Нажми PLAY на деке — этой кнопкой запускается опрос.'; }
-      else if (s === 'cue') { q('h2').textContent = 'КНОПКА CUE'; q('.ask').textContent = 'Нажми CUE на деке — этой кнопкой на финале возвращаемся в начало. Если пропустить, назад будет делать PLAY.'; }
+      else if (s === 'play') { q('h2').textContent = 'КНОПКА PLAY / PAUSE'; q('.ask').textContent = 'Нажми PLAY на деке — пуск и пауза обоих треков.'; }
+      else if (s === 'cue') { q('h2').textContent = 'КНОПКА CUE'; q('.ask').textContent = 'Нажми CUE на деке — переход к следующей паре треков.'; }
       else if (CTRL[s]) { q('h2').textContent = CTRL[s]; q('.ask').textContent = CTRL_ASK[s] + ' Проведи от края до края, потом «Дальше».'; q('[data-a=skip]').textContent = 'ДАЛЬШЕ'; }
       else { q('h2').textContent = 'ДЕКА ПОДКЛЮЧЕНА'; const n = Object.keys(p.jog).length;
         q('.ask').textContent = `Колесо: ${n ? 'есть' : 'нет'}${p.touch ? ', с датчиком касания' : ''}. Пады: ${p.pads.filter(Boolean).length} из 8. PLAY: ${p.play ? 'есть' : 'нет'}. CUE: ${p.cue ? 'есть' : 'нет'}. Регуляторы: ${Object.keys(CTRL).filter(c => p[c]).map(c => CTRL[c].toLowerCase()).join(', ') || 'нет'}.`;
@@ -262,7 +262,7 @@ const MIDI = (() => {
       else if (a === 'less' || a === 'more') { const k = a === 'more' ? 1.1 : 1 / 1.1; for (const key in p.jog) p.jog[key].deg *= k; acc *= k; q('.got').textContent = Math.round(acc) + '°'; }
       else if (a === 'back') { si = Math.max(0, si - 1); const s = steps[si]; if (s === 'wheel') { p.jog = {}; p.touch = null; } else if (s.startsWith('pad')) p.pads[+s.slice(3)] = null; else if (s === 'play' || s === 'cue') p[s] = null; else if (CTRL[s]) p[s] = null; show(); }
     });
-    show();
+    if (only) adopt(); show();
   }
 
   // полоска микса: появляется на пару секунд, когда двигают фейдер
@@ -290,5 +290,7 @@ const MIDI = (() => {
   });
   init();
   // feed — подать сообщение вручную (отладка без железа): MIDI.feed('имя порта', [0xB0, 0x22, 0x41])
-  return { openWizard, profiles: () => profiles, reset: () => { profiles = {}; save(); mark(); }, feed: (name, data) => onMessage({ name: base(name), tag: tagOf(name), full: name }, data) };
+  const devices = () => access ? [...new Set([...access.inputs.values()].map(p => base(p.name)).filter(n => !IGNORE.test(n)))] : [];
+  return { openWizard, learn: (step, name) => openWizard(name || devices()[0] || null, step), devices, profileOf, PAD_NAMES, CTRL,
+           profiles: () => profiles, reset: name => { if (name) delete profiles[name]; else profiles = {}; save(); mark(); }, feed: (name, data) => onMessage({ name: base(name), tag: tagOf(name), full: name }, data) };
 })();
