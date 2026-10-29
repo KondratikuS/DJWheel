@@ -7,13 +7,13 @@
 const MIDI = (() => {
   const KEY = 'djw-midi-profiles-v1';
   // регуляторы с ходом (CC): имя шага → заголовок; в профиле — {key, min, max}
-  const CTRL = { fader: 'КРОССФЕЙДЕР', vol: 'ГРОМКОСТЬ', low: 'НИЗКИЕ', mid: 'СРЕДНИЕ', high: 'ВЫСОКИЕ', tempo: 'ТЕМП' };
+  const CTRL = { fader: 'КРОССФЕЙДЕР', vol: 'ГРОМКОСТЬ', low: 'НИЗКИЕ', mid: 'СРЕДНИЕ', high: 'ВЫСОКИЕ', tempo: 'ТЕМП ЛЕВОЙ ДЕКИ', tempo2: 'ТЕМП ПРАВОЙ ДЕКИ' };
   const CTRL_ASK = { fader: 'Кроссфейдер внизу микшера — переливает первый трек пары во второй.', vol: 'Фейдер первого канала (слева) — громкость.',
                      low: 'Фейдер второго канала — низкие.', mid: 'Фейдер третьего канала — средние.', high: 'Фейдер четвёртого канала — высокие.',
-                     tempo: 'Фейдер TEMPO на любой деке — общий темп обоих треков.' };
+                     tempo: 'Фейдер TEMPO на левой деке — общий темп обоих треков.', tempo2: 'Фейдер TEMPO на правой деке — тот же общий темп.' };
   function applyCtrl(c, v) {
     if (c === 'fader') { setMix(v); return showMix(); }
-    if (c === 'tempo') return setTempo(1 - v * 2);                   // на пульте «+» внизу
+    if (c === 'tempo' || c === 'tempo2') return setTempo(1 - v * 2);                   // на пульте «+» внизу
     setChan(['vol', 'low', 'mid', 'high'].indexOf(c), v);
   }
   const PAD_NAMES = ['KICK', 'HAT', 'CLAP', 'SNARE', 'TAMB', 'CRASH', 'CYMBAL', 'HORN', 'LASER', 'HIT', 'ZAP', 'COWBELL', 'RIM', 'YEAH', 'DROP', 'WHOOSH'];
@@ -87,7 +87,7 @@ const MIDI = (() => {
     if (wiz) return 'идёт в мастер';
     if (!p) return 'для этого порта нет профиля';
     if (p.jog[m.key] && m.cc) return state === 'play' ? 'колесо — скретч' : 'колесо (трек ещё не запущен)';
-    if (m.key === p.touch) return 'касание ' + (m.on ? 'вкл' : 'выкл');
+    if (m.key === p.touch || m.key === p.touch2) return 'касание ' + (m.on ? 'вкл' : 'выкл');
     for (const c in CTRL) if (p[c] && m.key === p[c].key) return CTRL[c].toLowerCase();
     const i = p.pads.indexOf(m.key); if (i >= 0) return `пад ${PAD_NAMES[i]}`;
     if (m.key === (p.play || p.action)) return 'PLAY'; if (m.key === p.cue) return 'CUE';
@@ -119,7 +119,7 @@ const MIDI = (() => {
     let j = p.jog[m.key];
     if (!j && sibling(p, m, port.name)) { j = p.jog[m.key]; keep(port, p); }
     if (j && m.cc) { if (cand) cand.ticks++; return turn(decode(j, m.val, absState[port.name + m.key] || (absState[port.name + m.key] = {})) * j.deg); }
-    if (m.key === p.touch) return touch(m.on);
+    if (m.key === p.touch || m.key === p.touch2) return touch(m.on);
     for (const c in CTRL) if (p[c] && m.cc && m.key === p[c].key) { const v = (m.val - p[c].min) / Math.max(1, p[c].max - p[c].min); return applyCtrl(c, v); }
     const i = p.pads.indexOf(m.key); if (i >= 0) { if (m.on) pad(i); return; }
     if (m.key === (p.play || p.action)) { if (m.on) play(p); return; }          // action — поле из первых профилей
@@ -144,7 +144,7 @@ const MIDI = (() => {
   }
   // касание не привязано: нота, которая началась до вращения и кончилась после него, — это датчик касания
   function learnTouch(p, m) {
-    if (p.touch || m.cc) return false;
+    if (p.touch || p.touch2 || m.cc) return false;
     if (m.on) { cand = { key: m.key, ticks: 0 }; return false; }
     const ok = cand && cand.key === m.key && cand.ticks >= 3; cand = null;
     if (ok) p.touch = m.key; return ok;
@@ -174,32 +174,34 @@ const MIDI = (() => {
       <div class="row"><button data-a="back">НАЗАД</button><button data-a="skip">ПРОПУСТИТЬ</button><button data-a="close">ЗАКРЫТЬ</button></div>`;
     $('#frame').appendChild(el);
     const q = s => el.querySelector(s);
-    const p = { jog: {}, touch: null, pads: [], play: null, cue: null, fader: null, vol: null, low: null, mid: null, high: null, tempo: null }; let had = false;
-    const steps = only ? (only === 'wheel' ? ['wheel', 'check', 'done'] : [only, 'done']) : ['wheel', 'check', ...PAD_NAMES.map((_, i) => 'pad' + i), 'play', 'cue', ...Object.keys(CTRL), 'done'];
-    let si = 0, cc = {}, notes = {}, timer = 0, acc = 0, accT = 0; const chk = {};
-    const used = () => [...Object.keys(p.jog), p.touch, ...p.pads, p.play, p.cue, ...Object.keys(CTRL).map(c => p[c] && p[c].key)].filter(Boolean);
+    const p = { jog: {}, touch: null, touch2: null, pads: [], play: null, cue: null, fader: null, vol: null, low: null, mid: null, high: null, tempo: null, tempo2: null }; let had = false;
+    const steps = only ? (only === 'wheel' ? ['wheel', 'check', 'done'] : only === 'wheel2' ? ['wheel2', 'check2', 'done'] : [only, 'done'])
+      : ['wheel', 'check', 'wheel2', 'check2', ...PAD_NAMES.map((_, i) => 'pad' + i), 'play', 'cue', ...Object.keys(CTRL), 'done'];
+    const isWheel = s => s === 'wheel' || s === 'wheel2', isCheck = s => s === 'check' || s === 'check2';
+    let si = 0, cc = {}, notes = {}, timer = 0, acc = 0, accT = 0; const chk = {}; const rightKeys = new Set();
+    const used = () => [...Object.keys(p.jog), p.touch, p.touch2, ...p.pads, p.play, p.cue, ...Object.keys(CTRL).map(c => p[c] && p[c].key)].filter(Boolean);
     function show() {
       const s = steps[si]; clearTimeout(timer); cc = {}; notes = {};
       q('.dev').textContent = name || 'жду сигнал с деки…'; q('.step').textContent = s === 'done' ? 'ГОТОВО' : `ШАГ ${si + 1} / ${steps.length - 1}`; q('.got').textContent = '';
-      const now = s === 'wheel' ? Object.keys(p.jog).join(', ') : s.startsWith('pad') ? p.pads[+s.slice(3)] : s === 'play' || s === 'cue' ? p[s] : CTRL[s] ? p[s] && p[s].key : '';
+      const now = isWheel(s) ? Object.keys(p.jog).join(', ') : s.startsWith('pad') ? p.pads[+s.slice(3)] : s === 'play' || s === 'cue' ? p[s] : CTRL[s] ? p[s] && p[s].key : '';
       if (had && now) q('.got').textContent = `сейчас: ${now.toUpperCase()} — «Пропустить» оставит как есть`;
       q('[data-a=back]').style.visibility = si ? 'visible' : 'hidden'; q('[data-a=skip]').style.display = s === 'done' ? 'none' : '';
-      q('[data-a=skip]').textContent = s === 'check' ? 'ДАЛЬШЕ' : 'ПРОПУСТИТЬ'; q('.tune').style.display = s === 'check' ? '' : 'none';
-      if (s === 'wheel') { q('h2').textContent = 'КОЛЕСО'; q('.ask').textContent = `Положи руку на диск сверху, сделай ${TURNS} полных оборота по часовой стрелке и убери руку. Точность не нужна — возьмём среднее.`; }
-      else if (s === 'check') { acc = 0; q('h2').textContent = 'ПРОВЕРКА'; q('.ask').textContent = 'Поверни диск на четверть оборота — сначала взявшись за верх, потом за обод. Здесь должно быть около 90°. Если заметно больше или меньше, поправь кнопками.'; q('.got').textContent = '0°';
+      q('[data-a=skip]').textContent = isCheck(s) ? 'ДАЛЬШЕ' : 'ПРОПУСТИТЬ'; q('.tune').style.display = isCheck(s) ? '' : 'none';
+      if (isWheel(s)) { q('h2').textContent = s === 'wheel' ? 'ЛЕВОЕ КОЛЕСО' : 'ПРАВОЕ КОЛЕСО'; q('.ask').textContent = `Положи руку на ${s === 'wheel' ? 'левый' : 'правый'} диск сверху, сделай ${TURNS} полных оборота по часовой стрелке и убери руку. Точность не нужна — возьмём среднее.`; }
+      else if (isCheck(s)) { acc = 0; q('h2').textContent = 'ПРОВЕРКА'; q('.ask').textContent = 'Поверни диск на четверть оборота — сначала взявшись за верх, потом за обод. Здесь должно быть около 90°. Если заметно больше или меньше, поправь кнопками.'; q('.got').textContent = '0°';
         if (!Object.keys(p.jog).length) return next(); }
       else if (s.startsWith('pad')) { const i = +s.slice(3); q('h2').textContent = 'ПАД ' + PAD_NAMES[i]; q('.ask').textContent = `Нажми кнопку на деке, которая будет играть ${PAD_NAMES[i]}.`; }
       else if (s === 'play') { q('h2').textContent = 'КНОПКА PLAY / PAUSE'; q('.ask').textContent = 'Нажми PLAY на деке — пуск и пауза обоих треков.'; }
       else if (s === 'cue') { q('h2').textContent = 'КНОПКА CUE'; q('.ask').textContent = 'Нажми CUE на деке — переход к следующей паре треков.'; }
       else if (CTRL[s]) { q('h2').textContent = CTRL[s]; q('.ask').textContent = CTRL_ASK[s] + ' Проведи от края до края, потом «Дальше».'; q('[data-a=skip]').textContent = 'ДАЛЬШЕ'; }
       else { q('h2').textContent = 'ДЕКА ПОДКЛЮЧЕНА'; const n = Object.keys(p.jog).length;
-        q('.ask').textContent = `Колесо: ${n ? 'есть' : 'нет'}${p.touch ? ', с датчиком касания' : ''}. Пады: ${p.pads.filter(Boolean).length} из 8. PLAY: ${p.play ? 'есть' : 'нет'}. CUE: ${p.cue ? 'есть' : 'нет'}. Регуляторы: ${Object.keys(CTRL).filter(c => p[c]).map(c => CTRL[c].toLowerCase()).join(', ') || 'нет'}.`;
+        q('.ask').textContent = `Колёса: ${n ? 'есть' : 'нет'}${p.touch ? ', с датчиком касания' : ''}${p.touch2 ? ' (и на правом)' : ''}. Пады: ${p.pads.filter(Boolean).length} из ${PAD_NAMES.length}. PLAY: ${p.play ? 'есть' : 'нет'}. CUE: ${p.cue ? 'есть' : 'нет'}. Регуляторы: ${Object.keys(CTRL).filter(c => p[c]).map(c => CTRL[c].toLowerCase()).join(', ') || 'нет'}.`;
         if (name) { profiles[name] = p; save(); } mark(); timer = setTimeout(close, 2500); }
     }
     const next = () => { si = Math.min(si + 1, steps.length - 1); show(); };
     // у деки уже есть профиль — берём его за основу, чтобы можно было перепривязать одну вещь, а остальное пропустить
     function adopt() { const ex = name && profileOf(name); if (!ex) return; const c = JSON.parse(JSON.stringify(ex));
-      Object.assign(p, { jog: c.jog || {}, touch: c.touch || null, pads: c.pads || [], play: c.play || c.action || null, cue: c.cue || null }); for (const k in CTRL) p[k] = c[k] || null; had = true; show(); }
+      Object.assign(p, { jog: c.jog || {}, touch: c.touch || null, touch2: c.touch2 || null, pads: c.pads || [], play: c.play || c.action || null, cue: c.cue || null }); for (const k in CTRL) p[k] = c[k] || null; had = true; show(); }
     const note = t => { if (!q('.ask').textContent.includes(t)) q('.ask').textContent += ` (${t})`; };
     function finishWheel() {
       const held = Object.values(notes).some(n => n.on && !n.off);        // рука ещё на диске — ждём, но не вечно
@@ -224,20 +226,22 @@ const MIDI = (() => {
         jogNew[key] = { enc, sign: sum < 0 ? -1 : 1, deg: 360 * TURNS / Math.abs(sum) }; found++; info.push(`${key.toUpperCase()} · около ${Math.round(Math.abs(sum) / TURNS)} тиков на оборот`);
       }
       if (!found) { q('.got').textContent = 'Это не похоже на колесо (фейдер или ручка?) — покрути сам диск, в одну сторону.'; cc = {}; notes = {}; return; }
-      p.jog = jogNew; p.touch = null;                                     // новая калибровка заменяет старую целиком
-      const t = Object.keys(notes).find(k => notes[k].both); if (t) p.touch = t;
+      const right = steps[si] === 'wheel2';                               // правое колесо добавляется к левому, левое — калибровка заново
+      if (right) { for (const k in jogNew) p.jog[k] = jogNew[k]; p.touch2 = null; } else { for (const k in p.jog) if (!rightKeys.has(k)) delete p.jog[k]; for (const k in jogNew) p.jog[k] = jogNew[k]; p.touch = null; }
+      const t = Object.keys(notes).find(k => notes[k].both); if (t) p[right ? 'touch2' : 'touch'] = t;
+      if (right) for (const k in jogNew) rightKeys.add(k);
       q('.got').textContent = info.join('   ') + (t ? `   касание ${t.toUpperCase()}` : '   касание не найдено'); timer = setTimeout(next, 1800);
     }
     wiz = { feed(port, m) {
       if (!name) { name = port.name; q('.dev').textContent = name; adopt(); }
       if (port.name !== name) return; const s = steps[si];
-      if (s === 'wheel') {
+      if (isWheel(s)) {
         if (m.cc) { (cc[m.key] = cc[m.key] || []).push(m.val); q('.got').textContent = `${m.key.toUpperCase()} … ${Object.values(cc).reduce((a, x) => a + x.length, 0)}`; clearTimeout(timer); timer = setTimeout(finishWheel, 2000); }
         else { const n = notes[m.key] = notes[m.key] || {}; if (m.on) { n.on = 1; n.off = 0; n.seenOn = 1; } else { n.off = 1; if (n.seenOn) n.both = 1; } }   // руку между оборотами перехватывают — шаг закрывает только тишина
-      } else if (s === 'check') {
+      } else if (isCheck(s)) {
         if (sibling(p, m, 'wiz')) note('второй канал колеса добавлен');
         if (learnTouch(p, m)) note('датчик касания найден');
-        const j = p.jog[m.key]; if (m.key === p.touch && m.on) acc = 0;
+        const j = p.jog[m.key]; if ((m.key === p.touch || m.key === p.touch2) && m.on) acc = 0;
         if (j && m.cc) { if (cand) cand.ticks++; const now = performance.now(); if (!p.touch && now - accT > 1500) acc = 0; accT = now; acc += decode(j, m.val, chk) * j.deg; q('.got').textContent = Math.round(acc) + '°'; }
       } else if (CTRL[s]) {                             // регулятор: берём CC с самым широким ходом (на каждый шаг — свой учёт)
         if (!m.cc) return; const r = cc[m.key] = cc[m.key] || { min: 127, max: 0, prev: m.val };
@@ -260,7 +264,7 @@ const MIDI = (() => {
       if (a === 'close') { if (name && (Object.keys(p.jog).length || p.pads.some(Boolean) || p.play || p.cue || Object.keys(CTRL).some(c => p[c]))) { profiles[name] = p; save(); mark(); } close(); }
       else if (a === 'skip') next();                                       // пропуск ничего не стирает
       else if (a === 'less' || a === 'more') { const k = a === 'more' ? 1.1 : 1 / 1.1; for (const key in p.jog) p.jog[key].deg *= k; acc *= k; q('.got').textContent = Math.round(acc) + '°'; }
-      else if (a === 'back') { si = Math.max(0, si - 1); const s = steps[si]; if (s === 'wheel') { p.jog = {}; p.touch = null; } else if (s.startsWith('pad')) p.pads[+s.slice(3)] = null; else if (s === 'play' || s === 'cue') p[s] = null; else if (CTRL[s]) p[s] = null; show(); }
+      else if (a === 'back') { si = Math.max(0, si - 1); const s = steps[si]; if (s === 'wheel') { p.jog = {}; p.touch = null; } else if (s === 'wheel2') { for (const k of rightKeys) delete p.jog[k]; rightKeys.clear(); p.touch2 = null; } else if (s.startsWith('pad')) p.pads[+s.slice(3)] = null; else if (s === 'play' || s === 'cue') p[s] = null; else if (CTRL[s]) p[s] = null; show(); }
     });
     if (only) adopt(); show();
   }

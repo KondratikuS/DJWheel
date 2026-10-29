@@ -551,7 +551,8 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&am
 function renderDeck() {
   const el = $('#tabDeck'); if (typeof MIDI === 'undefined') { el.innerHTML = '<p class="muted">Web MIDI недоступен — нужен Chrome или Edge.</p>'; return; }
   const devs = MIDI.devices(); const name = devs[0]; const p = name ? MIDI.profileOf(name) : null;
-  const rows = [['wheel', 'Колесо (скретч)', p && Object.keys(p.jog || {}).join(', ') + (p && p.touch ? ' · касание ' + p.touch : '')],
+  const rows = [['wheel', 'Левое колесо (скретч)', p && Object.keys(p.jog || {}).join(', ') + (p && p.touch ? ' · касание ' + p.touch : '')],
+    ['wheel2', 'Правое колесо (скретч)', p && p.touch2 ? 'касание ' + p.touch2 + ' (тики — в общем списке колёс)' : ''],
     ...MIDI.PAD_NAMES.map((n, i) => ['pad' + i, 'Пад ' + n, p && p.pads && p.pads[i]]),
     ['play', 'PLAY / PAUSE', p && (p.play || p.action)], ['cue', 'CUE — следующая пара', p && p.cue],
     ...Object.entries(MIDI.CTRL).map(([k, t]) => [k, t[0] + t.slice(1).toLowerCase(), p && p[k] && `${p[k].key} · ${p[k].min}…${p[k].max}`])];
@@ -560,7 +561,7 @@ function renderDeck() {
       <button class="pri" data-d="wizard">МАСТЕР ЦЕЛИКОМ</button><button data-d="diag">ДИАГНОСТИКА (D)</button><button class="danger" data-d="reset">СБРОСИТЬ ПРОФИЛЬ</button></div>
     <table><tr><th>функция</th><th>на деке</th><th></th></tr>
     ${rows.map(([k, t, v]) => `<tr><td>${t}</td><td><code>${v ? esc(String(v).toUpperCase()) : '—'}</code></td><td><button data-learn="${k}">ПЕРЕУЧИТЬ</button></td></tr>`).join('')}</table>
-    <p class="muted">Переучить: нажми кнопку, потом сделай нужное на деке — колесо: три оборота; кнопка: нажать; регулятор: от края до края и «Дальше». Профиль хранится в этом браузере.</p>`;
+    <p class="muted">Переучить: нажми кнопку, потом сделай нужное на деке — колесо: три оборота (левое и правое — отдельно); кнопка: нажать; регулятор: от края до края и «Дальше». Профиль хранится в этом браузере.</p>`;
   el.onclick = e => {
     const b = e.target; if (b.dataset.learn) { toggleSettings(false); MIDI.learn(b.dataset.learn, name); }
     else if (b.dataset.d === 'wizard') { toggleSettings(false); MIDI.openWizard(name); }

@@ -400,117 +400,16 @@
         "off_ms": 120
       }
     ],
-    "start": [
-      {
-        "to": "resolume",
-        "addr": "/composition/columns/5/connect",
-        "args": [
-          1
-        ]
-      },
-      {
-        "to": "ma",
-        "addr": "/gma3/cmd",
-        "args": [
-          "Go+ Executor 21"
-        ]
-      },
-      {
-        "midi": [
-          144,
-          21,
-          127
-        ],
-        "off_ms": 120
-      }
-    ],
-    "play": [
-      {
-        "to": "ma",
-        "addr": "/gma3/cmd",
-        "args": [
-          "Go+ Executor 11"
-        ]
-      },
-      {
-        "midi": [
-          144,
-          11,
-          127
-        ],
-        "off_ms": 120
-      }
-    ],
-    "pause": [
-      {
-        "to": "ma",
-        "addr": "/gma3/cmd",
-        "args": [
-          "Go+ Executor 12"
-        ]
-      },
-      {
-        "midi": [
-          144,
-          12,
-          127
-        ],
-        "off_ms": 120
-      }
-    ],
+    "start": [],
+    "play": [],
+    "pause": [],
     "cue": [],
-    "pair": [
-      {
-        "to": "resolume",
-        "addr": "/composition/columns/{a}/connect",
-        "args": [
-          1
-        ]
-      },
-      {
-        "to": "ma",
-        "addr": "/gma3/cmd",
-        "args": [
-          "Go+ Executor 4{a}"
-        ]
-      },
-      {
-        "midi": [
-          144,
-          "4{a}",
-          127
-        ],
-        "off_ms": 120
-      }
-    ],
+    "pair": [],
     "next": [],
     "scratch": [],
-    "mix": [
-      {
-        "to": "resolume",
-        "addr": "/composition/layers/1/video/opacity",
-        "args": [
-          "{v}"
-        ]
-      },
-      {
-        "midi": [
-          176,
-          1,
-          "{v127}"
-        ]
-      }
-    ],
+    "mix": [],
     "tempo": [],
-    "chan": [
-      {
-        "midi": [
-          176,
-          "1{n}",
-          "{v127}"
-        ]
-      }
-    ],
+    "chan": [],
     "state": []
   }
 }
