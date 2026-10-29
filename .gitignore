@@ -2,3 +2,4 @@ dist/
 tools/out/
 ref/parts/
 __pycache__/
+tracks/

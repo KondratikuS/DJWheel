@@ -39,7 +39,7 @@
   }
 
   /* ── табло ── */
-  #display {
+  #display {                            /* место и размер — LAYOUT.display (экран пульта) */
     position: absolute; z-index: 6; left: 50%; top: 1.2%; transform: translateX(-50%);
     width: 40%; height: 11.5%;
     background: linear-gradient(#0a0d13, var(--lcd-bg));
@@ -60,51 +60,44 @@
   #display.eq #eq { display: block; }
 
   /* ── колесо ── */
-  #deck {                              /* размер и место задаёт LAYOUT.jog */
+  .deck {                              /* размер и место задаёт LAYOUT.jogs */
     position: absolute; z-index: 1; left: 50%; top: 46%; transform: translate(-50%, -50%);
-    width: calc(var(--h) * .70); height: calc(var(--h) * .70);
+    width: calc(var(--h) * .45); height: calc(var(--h) * .45);
   }
-  #wheel { width: 100%; height: 100%; display: block; overflow: visible; }
-  #platter { cursor: grab; transform-origin: 500px 500px; }
-  #platter.grab { cursor: grabbing; }
-  #platter.spin { animation: spin 3.6s linear infinite; }
+  .deck svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .platter { cursor: grab; transform-origin: 500px 500px; }
+  .platter.grab { cursor: grabbing; }
+  .platter.spin { animation: spin 3.6s linear infinite; }
+  .jogName {                           /* экран в центре джога: имя трека этой деки */
+    position: absolute; z-index: 2; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 60%; aspect-ratio: 1; border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .3em; text-align: center; pointer-events: none;
+    background: radial-gradient(circle at 50% 40%, #15171c, #07080a 70%); box-shadow: inset 0 0 18px #000, 0 0 0 2px #26282d;
+    color: #d9e6ff; font: 700 calc(var(--h) * .026) 'Montserrat', sans-serif; letter-spacing: .06em; text-shadow: 0 0 10px rgba(120,160,255,.5);
+  }
+  .jogName small { font: 400 calc(var(--h) * .016) 'Share Tech Mono', monospace; letter-spacing: .12em; color: #6f86b8; }
+  .jogName.hot { color: #2fd85a; text-shadow: 0 0 12px rgba(47,216,90,.7); }
+  #fader {                             /* ручка кроссфейдера: ходит по LAYOUT.fader вместе с миксом */
+    position: absolute; z-index: 6; transform: translate(-50%, -50%); border-radius: 3px; pointer-events: none;
+    background: linear-gradient(#e8e8ea, #9a9ca3 45%, #5c5e65 50%, #c8c9cd); box-shadow: 0 2px 6px #000, inset 0 0 0 1px #3a3c42;
+    transition: left .05s linear;
+  }
+  #faderTrack { position: absolute; z-index: 5; transform: translate(-50%, -50%); height: 2px; background: #3a3c42; pointer-events: none; }
+  #fader { pointer-events: auto; cursor: ew-resize; }
+  .vknob {                             /* ручки фейдеров каналов и темпа: ходят по LAYOUT.chans / LAYOUT.tempo */
+    position: absolute; z-index: 6; transform: translate(-50%, -50%); border-radius: 3px; cursor: ns-resize; touch-action: none;
+    background: linear-gradient(#f2f2f3, #b9bbc0 40%, #ffffff 48%, #ffffff 52%, #8d8f95 60%, #c9cacd); box-shadow: 0 2px 6px #000, inset 0 0 0 1px #45474d;
+  }
+  .vknob.tempo { background: linear-gradient(#3a3b3f, #1a1b1e 44%, #ffffff 49%, #ffffff 51%, #1a1b1e 56%, #2a2b2e); }
+  .vtrack { position: absolute; z-index: 5; transform: translate(-50%, 0); width: 3px; background: transparent; cursor: ns-resize; touch-action: none; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .seg { cursor: pointer; }
-  .seg path { fill: var(--red-dim); stroke: #16171a; stroke-width: 3; transition: fill .18s; }
-  .seg text { font-family: 'Montserrat', sans-serif; font-weight: 700; fill: #ff9a9e; letter-spacing: .06em; pointer-events: none; transition: fill .18s; }
-  .seg .n { font-family: 'Share Tech Mono', monospace; font-weight: 400; fill: #ff7a7f; opacity: .85; }
-  .seg.on path { fill: var(--green); filter: drop-shadow(0 0 8px rgba(47,216,90,.7)); }
-  .seg.on text, .seg.on .n { fill: #0b2a12; opacity: 1; }
-  .seg.pick path { animation: pick .5s ease-out; }
-  @keyframes pick { 0% { fill: #fff; } 100% { fill: var(--green); } }
-  .seg.off { opacity: 0; pointer-events: none; }
-  #ring { transition: opacity .5s; }
-  #ring.hidden { opacity: 0; pointer-events: none; }
 
-  /* центральная кнопка / ступица */
-  #centerBtn {
-    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    width: 24%; aspect-ratio: 1; border-radius: 50%; border: 0; z-index: 3;
-    background: radial-gradient(circle at 50% 35%, #3a3d44, #121316 70%);
-    box-shadow: 0 0 0 3px #0a0a0b, 0 0 0 5px #3d4047, 0 6px 18px rgba(0,0,0,.8), inset 0 2px 4px rgba(255,255,255,.12);
-    color: #ddd; font: 700 calc(var(--h) * .036) 'Montserrat', sans-serif; letter-spacing: .12em;
-    cursor: pointer; transition: transform .12s, box-shadow .2s, color .2s;
-  }
-  #centerBtn:active { transform: translate(-50%, -50%) scale(.95); }
-  #centerBtn.pulse { animation: pulse 1.6s ease-in-out infinite; color: var(--green); }
-  @keyframes pulse {
-    0%,100% { box-shadow: 0 0 0 3px #0a0a0b, 0 0 0 5px #3d4047, 0 0 12px rgba(47,216,90,.2); }
-    50%      { box-shadow: 0 0 0 3px #0a0a0b, 0 0 0 5px #2fd85a, 0 0 32px rgba(47,216,90,.6); }
-  }
-  #centerBtn.hub { pointer-events: none; color: #6f86b8; font-family: 'Share Tech Mono', monospace; font-weight: 400; letter-spacing: .2em; }
-  #centerBtn.hidden { display: none; }
 
   /* ── пады дека с семплами (место — LAYOUT.pads, сама кнопка — на фоне) ── */
   .pad {
     position: absolute; z-index: 6; transform: translate(-50%, -50%); cursor: pointer;
-    background: #05080f; border: 2px solid #3d7dff; border-radius: 4px; box-shadow: 0 0 6px rgba(61,125,255,.6);
+    background: #05080f; border: 2px solid var(--c, #3d7dff); border-radius: 4px; box-shadow: 0 0 6px var(--c, #3d7dff);
     opacity: 0; pointer-events: none; padding: 0;
-    font: 700 calc(var(--h) * .018) 'Montserrat', sans-serif; letter-spacing: .04em; color: #9db9ff; overflow: hidden;
+    font: 700 calc(var(--h) * .0092) 'Montserrat', sans-serif; letter-spacing: 0; color: #dfe3ea; overflow: hidden; line-height: 1;
     transition: opacity .3s, background .1s, box-shadow .1s, left .9s ease-in-out, top .9s ease-in-out, width .9s ease-in-out, height .9s ease-in-out, font-size .9s ease-in-out;
   }
   .pad.show { opacity: 1; pointer-events: auto; }
@@ -115,44 +108,18 @@
   .led { position: absolute; z-index: 3; transform: translate(-50%, -50%); border-radius: 2px; background: #1c1d20; pointer-events: none; transition: background .06s, box-shadow .06s; }
   .led.on { background: var(--c); box-shadow: 0 0 6px var(--c); }
 
-  /* ── кнопка под диском ── */
-  /* временно, для прослушивания: переключатель пар треков на финале */
-  #pairBtn { position: absolute; z-index: 6; right: 2%; bottom: 3.5%; padding: .5em 1.2em; border-radius: 999px; border: 2px solid #3d4047;
-    background: linear-gradient(#2b2d31, #151618); color: #e8e14a; font: 700 calc(var(--h) * .022) 'Share Tech Mono', monospace; letter-spacing: .1em;
-    cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .8s; }
-  #pairBtn.show { opacity: 1; pointer-events: auto; }
-  #back {
-    position: absolute; z-index: 6; left: 50%; bottom: 3.5%; transform: translateX(-50%);
-    padding: .55em 2.4em; border-radius: 999px; border: 2px solid #3d4047;
-    background: linear-gradient(#2b2d31, #151618); color: #eee; font: 700 calc(var(--h) * .03) 'Montserrat', sans-serif;
-    letter-spacing: .15em; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,.7);
-    opacity: 0; pointer-events: none; transition: opacity .8s;
-  }
-  #back.show { opacity: 1; pointer-events: auto; }
 
-  /* ── результат ── */
-  #result {
-    position: absolute; inset: 0; z-index: 4; display: none; flex-direction: column;
-    align-items: center; justify-content: flex-start; padding: 13.5% 30% 0;
-    background: rgba(8,9,11,.74); backdrop-filter: blur(2px); text-align: center; pointer-events: none;
-    opacity: 0; transition: opacity .8s;
-  }
-  #result.show { display: flex; opacity: 1; }
-  #result .tag { font-family: 'Share Tech Mono', monospace; letter-spacing: .3em; color: #6f86b8; font-size: calc(var(--h) * .026); margin-bottom: .8em; }
-  #result h1 { margin: 0 0 .5em; font-size: calc(var(--h) * .064); line-height: 1.05; letter-spacing: .04em; color: #fff; text-shadow: 0 0 24px rgba(47,216,90,.6); }
-  #result p { margin: 0; font-style: italic; font-weight: 400; font-size: calc(var(--h) * .028); line-height: 1.45; color: #dfe3ea; min-height: 4.4em; }
-  #hint { position: absolute; z-index: 3; top: 68%; left: 20%; width: 60%; text-align: center; line-height: 1.5; pointer-events: none; font-size: calc(var(--h) * .022); letter-spacing: .2em; color: #6a6d75; text-transform: uppercase; }
 </style>
 </head>
 <body>
 <div id="frame">
   <img id="bg" src="img/bg.png" alt="" onerror="this.classList.add('missing'); document.getElementById('fakeRim').style.display=''">
   <div id="display">
-    <div id="lcd"><div class="tag" id="tag">DJ WHEEL</div><div class="q" id="question">КАКОЙ ТЫ ДИДЖЕЙ?</div></div>
+    <div id="lcd"><div class="tag" id="tag">DJ WHEEL</div><div class="q" id="question">КОСНИСЬ ЭКРАНА</div></div>
     <canvas id="eq"></canvas>
   </div>
 
-  <div id="deck">
+  <div id="deck" class="deck">
     <svg id="wheel" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
       <defs>
         <radialGradient id="gRim" cx="50%" cy="45%" r="55%">
@@ -161,13 +128,9 @@
         <radialGradient id="gPlatter" cx="50%" cy="40%" r="60%">
           <stop offset="0%" stop-color="#2a2b2f"/><stop offset="70%" stop-color="#151618"/><stop offset="100%" stop-color="#0a0a0b"/>
         </radialGradient>
-        <radialGradient id="gHub" cx="50%" cy="35%" r="60%">
-          <stop offset="0%" stop-color="#4a4d54"/><stop offset="100%" stop-color="#17181b"/>
-        </radialGradient>
         <linearGradient id="gShine" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stop-color="#fff" stop-opacity=".18"/><stop offset="50%" stop-color="#fff" stop-opacity="0"/>
         </linearGradient>
-        <clipPath id="cpRim"><circle cx="500" cy="500" r="470"/></clipPath>
         <clipPath id="cpPlatter"><circle cx="500" cy="500" r="332"/></clipPath>
         <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#000" flood-opacity=".8"/></filter>
       </defs>
@@ -180,7 +143,7 @@
       </g>
 
       <!-- вращающийся диск -->
-      <g id="platter">
+      <g id="platter" class="platter">
         <circle cx="500" cy="500" r="340" fill="url(#gPlatter)"/>
         <g id="grooves" stroke="#fff" stroke-opacity=".045" fill="none"/>
         <image class="photo" xlink:href="img/wheel.png" x="30" y="30" width="940" height="940" clip-path="url(#cpPlatter)"/>
@@ -190,71 +153,53 @@
           <line x1="500" y1="168" x2="500" y2="235" stroke="#2fd85a" stroke-width="18" stroke-linecap="round" opacity=".35"/>
         </g>
       </g>
-
-      <!-- кольцо ответов — поверх диска -->
-      <g id="ring"></g>
     </svg>
-    <button id="centerBtn" class="pulse">START</button>
-    <div id="hint">жми старт</div>
+    <div class="jogName" id="jogA"><small>A</small><span>—</span></div>
   </div>
-
-  <button id="back">НАЗАД</button>
-  <button id="pairBtn" title="временно: переключение пар треков (клавиша N)">ПАРА</button>
-
-  <div id="result">
-    <div class="tag">ТВОЙ ПРОФИЛЬ</div>
-    <h1 id="rTitle"></h1>
-    <p id="rText"></p>
+  <div id="deck2" class="deck">
+    <svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+      <g id="platter2" class="platter">
+        <circle cx="500" cy="500" r="340" fill="url(#gPlatter)"/>
+        <image class="photo" xlink:href="img/wheel2.png" x="30" y="30" width="940" height="940" clip-path="url(#cpPlatter)"/>
+        <g class="marker">
+          <line x1="500" y1="168" x2="500" y2="235" stroke="#2fd85a" stroke-width="7" stroke-linecap="round"/>
+          <line x1="500" y1="168" x2="500" y2="235" stroke="#2fd85a" stroke-width="18" stroke-linecap="round" opacity=".35"/>
+        </g>
+      </g>
+    </svg>
+    <div class="jogName" id="jogB"><small>B</small><span>—</span></div>
   </div>
+  <div id="faderTrack"></div><div id="fader"></div>
 </div>
 
 <script src="layout.js"></script>
 <script>
-/* ───────── ДАННЫЕ (заглушки — заменить, когда придёт таблица) ───────── */
+/* ───────── ДАННЫЕ ─────────
+   Треки одной длины и одного темпа (tools/prep_tracks.py). Играют всегда парой: 1-2, 2-3, 3-1 … — оба трека
+   идут с одной позиции, фейдер деки переливает между ними (A = первый в паре, B = второй), скретч тянет оба.
+   Когда петля доходит до конца, пара сдвигается: второй трек становится первым. */
 const DATA = {
-  title: 'КАКОЙ ТЫ ДИДЖЕЙ?',
-  // у каждого варианта — баллы к четырём профилям [A, B, C, D]
-  questions: Array.from({ length: 5 }, (_, q) => ({
-    text: `ВОПРОС ${q + 1}: ТЕКСТ ВОПРОСА В ДВЕ СТРОКИ?`,
-    options: Array.from({ length: 6 }, (_, i) => ({
-      text: `ВАРИАНТ ${i + 1}`,
-      score: [0, 1, 2, 3].map(p => (i % 4 === p ? 2 : (i + 1) % 4 === p ? 1 : 0)),
-    })),
-  })),
-  profiles: [
-    { name: 'THE SELECTOR',  text: 'Описание-заглушка профиля A. Здесь будет два-три предложения о том, какой ты диджей и чем берёшь танцпол.', track: 'audio/house_a.ogg', track2: 'audio/house_b.ogg' },
-    { name: 'THE TECHNICIAN', text: 'Описание-заглушка профиля B. Точность, свод по битам и чистые переходы — твоя стихия.', track: 'audio/techno_a.ogg', track2: 'audio/techno_b.ogg' },
-    { name: 'THE CROWD READER', text: 'Описание-заглушка профиля C. Ты чувствуешь зал раньше, чем он сам понимает, чего хочет.', track: 'audio/disco_a.ogg', track2: 'audio/disco_b.ogg' },
-    { name: 'THE EXPERIMENTER', text: 'Описание-заглушка профиля D. Жанры для тебя не правила, а сырьё.', track: 'audio/dnb_a.ogg', track2: 'audio/dnb_b.ogg' },
+  tracks: [
+    { name: '3RD TRACK', url: 'audio/3rdtrack.ogg' },
+    { name: 'BEYOND',    url: 'audio/beyond.ogg' },
+    { name: 'VENICE',    url: 'audio/venice.ogg' },
   ],
-  // у профиля: track и track2 — две половины одного трека (A = ударные + бас, B = остальное), фейдер деки переливает
-  // между ними, середина = полный трек; null — синтез. house / techno / disco / dnb — ACE-Step + Demucs (tools/make_tracks.py)
-  testPairs: [{ a: 'audio/suno1_a.ogg', b: 'audio/suno1_b.ogg' }],   // временно: лишние пары для кнопки ПАРА
-  bgTrack: null,            // тихий фон на вопросах (URL); null — синтетический пад
+  bpm: 124, bars: 88,
   samples: { kick: 'audio/kick.ogg', hat: 'audio/hat.ogg', clap: 'audio/clap.ogg', snare: 'audio/snare.ogg', tamb: 'audio/tamb.ogg', crash: 'audio/crash.ogg', cymbal: 'audio/cymbal.ogg', horn: 'audio/horn.ogg',
-             laser: 'audio/laser.ogg', hit: 'audio/hit.ogg', zap: 'audio/zap.ogg', cowbell: 'audio/cowbell.ogg', rim: 'audio/rim.ogg', yeah: 'audio/yeah.ogg', drop: 'audio/drop.ogg', whoosh: 'audio/whoosh.ogg' },   // семплы с Pixabay через tools/prep_samples.py; null — синтез
-  dwellMs: 2000,            // задержался на секции — выбор
-  settleMs: 600,            // пауза после выбора перед следующим вопросом
-  flickVel: 14,             // градусов за кадр при отпускании — резкий рывок, включается рулетка
+             laser: 'audio/laser.ogg', hit: 'audio/hit.ogg', zap: 'audio/zap.ogg', cowbell: 'audio/cowbell.ogg', rim: 'audio/rim.ogg', yeah: 'audio/yeah.ogg', drop: 'audio/drop.ogg', whoosh: 'audio/whoosh.ogg' },   // семплы с Pixabay через tools/prep_samples.py
+  vinyl: 200,               // градусов в секунду при обычном ходе = 33⅓ об/мин; скретч считает скорость колеса от этой
+  touchStopMs: 35,          // коснулся диска — трек замирает за столько
+  releaseMs: 220,           // отпустил — разгон до обычного хода
+  tempoRange: .1,           // ход фейдера темпа ±10 % (как ±10 на пульте)
+  eq: { low: 250, mid: 1200, high: 4000, min: -26, max: 6 },   // полосы и ход фейдеров каналов в дБ (внизу −26, в середине 0, вверху +6)
 };
 
-/* ───────── ГЕОМЕТРИЯ ───────── */
-const CX = 500, CY = 500, R_IN = 372, R_OUT = 448, R_TXT = 412;
-const SEG = 6, SPAN = 180, STEP = SPAN / SEG, GAP = 1.6;
-const LIMIT = SPAN / 2;                          // маркер ходит от -90 до +90
-const NS = 'http://www.w3.org/2000/svg', XL = 'http://www.w3.org/1999/xlink';
+const CX = 500, CY = 500;
+const NS = 'http://www.w3.org/2000/svg';
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
-const ring = $('#ring'), platter = $('#platter'), btn = $('#centerBtn'), display = $('#display');
-const tag = $('#tag'), question = $('#question'), result = $('#result'), hint = $('#hint'), back = $('#back');
-
-const pol = (r, a) => { const t = (a - 90) * Math.PI / 180; return [CX + r * Math.cos(t), CY + r * Math.sin(t)]; };
-function arcPath(r0, r1, a0, a1) {
-  const [x0, y0] = pol(r1, a0), [x1, y1] = pol(r1, a1), [x2, y2] = pol(r0, a1), [x3, y3] = pol(r0, a0);
-  return `M${x0} ${y0} A${r1} ${r1} 0 0 1 ${x1} ${y1} L${x2} ${y2} A${r0} ${r0} 0 0 0 ${x3} ${y3} Z`;
-}
-function textArc(r, a0, a1) { const [x0, y0] = pol(r, a0), [x1, y1] = pol(r, a1); return `M${x0} ${y0} A${r} ${r} 0 0 1 ${x1} ${y1}`; }
+const platter = $('#platter'), platter2 = $('#platter2'), platters = [platter, platter2], display = $('#display'), tag = $('#tag'), question = $('#question');
+const jogA = $('#jogA span'), jogB = $('#jogB span'), fader = $('#fader'), jogAbpm = $('#jogA small'), jogBbpm = $('#jogB small');
 const el = (n, attrs = {}) => { const e = document.createElementNS(NS, n); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
-const tpath = id => { const t = el('textPath', { startOffset: '50%' }); t.setAttributeNS(XL, 'xlink:href', '#' + id); t.setAttribute('href', '#' + id); return t; };
 
 // фото колеса: если файла нет — прячем, остаётся рисованный диск
 $$('.photo').forEach(im => im.addEventListener('error', () => im.remove()));
@@ -269,31 +214,16 @@ const PADS = [['kick', 'KICK', '#2fd85a'], ['hat', 'HAT', '#e8e14a'], ['clap', '
               ['rim', 'RIM', '#4a9bff'], ['yeah', 'YEAH', '#c77dff'], ['drop', 'DROP', '#2fd85a'], ['whoosh', 'WHOOSH', '#e8e8ea']];
 const leds = [];                // столбики светодиодов: {els сверху вниз, v}
 const IMG = {};                 // при сборке в один файл pack_single_file.py кладёт сюда data-URI картинок
-function addPad(i, x, y, w, h) {
-  const b = document.createElement('button'); b.className = 'pad'; b.dataset.s = PADS[i][0]; b.style.setProperty('--c', PADS[i][2]);
-  b.style.left = x + '%'; b.style.top = y + '%'; b.style.width = w + '%'; b.style.height = h + '%';
-  b.dataset.home = JSON.stringify([x, y, w, h]);
+// пады крупно в два ряда: дека 1 сверху, дека 2 снизу, центр группы — 50 %
+const PAD_TARGET = { ys: [70.5, 80.8], w: 6.0, h: 8.8, xs: [26.2, 33, 39.8, 46.6, 53.4, 60.2, 67, 73.8], font: .0135 };
+function addPad(i) {
+  const b = document.createElement('button'); b.className = 'pad show'; b.dataset.s = PADS[i][0]; b.style.setProperty('--c', PADS[i][2]);
+  const p = L && L.pads && L.pads.length >= PADS.length ? L.pads[i] : null;
+  if (p) { b.style.left = p.x * 100 + '%'; b.style.top = p.y * 100 + '%'; b.style.width = p.w * 100 + '%'; b.style.height = p.h * 100 + '%'; }
+  else { b.style.left = PAD_TARGET.xs[i % 8] + '%'; b.style.top = PAD_TARGET.ys[i >> 3] + '%'; b.style.width = PAD_TARGET.w + '%'; b.style.height = PAD_TARGET.h + '%'; b.style.fontSize = `calc(var(--h) * ${PAD_TARGET.font})`; }
   b.textContent = PADS[i][1]; $('#frame').appendChild(b);
 }
-// финал: пады по очереди вспыхивают на месте, потом разъезжаются крупно под описание
-const PAD_TARGET = { ys: [70.5, 80.8], w: 6.0, h: 8.8, xs: [26.2, 33, 39.8, 46.6, 53.4, 60.2, 67, 73.8], font: .0135 };   // два ряда по восемь: дека 1 сверху, дека 2 снизу, центр группы — 50 %
-function padsHome() {
-  $$('.pad').forEach(b => {
-    const [x, y, w, h] = JSON.parse(b.dataset.home);
-    b.classList.add('still'); b.style.left = x + '%'; b.style.top = y + '%'; b.style.width = w + '%'; b.style.height = h + '%'; b.style.fontSize = '';
-    b.offsetWidth; b.classList.remove('still');
-  });
-}
-function padsShowcase() {
-  const pads = $$('.pad');
-  pads.forEach(b => {                                   // все разом вспыхнули (без звука) и поехали
-    b.classList.add('show', 'hit'); setTimeout(() => b.classList.remove('hit'), 350);
-  });
-  setTimeout(() => pads.forEach((b, i) => {
-    b.style.left = PAD_TARGET.xs[i % 8] + '%'; b.style.top = PAD_TARGET.ys[i >> 3] + '%'; b.style.width = PAD_TARGET.w + '%'; b.style.height = PAD_TARGET.h + '%';
-    b.style.fontSize = `calc(var(--h) * ${PAD_TARGET.font})`;
-  }), 150);
-}
+PADS.forEach((_, i) => addPad(i));
 // v = null — как на фото (горят все, кроме нижнего); число или массив 0..1 — уровень столбика
 function setLeds(v) {
   leds.forEach((c, i) => {
@@ -301,12 +231,36 @@ function setLeds(v) {
     c.els.forEach((e, k) => e.classList.toggle('on', v === null ? k < n - 1 : (n - k) / n <= lvl + 1e-6));
   });
 }
+const chan = [1, .8125, .8125, .8125];  // фейдеры каналов 0..1: громкость (1 = 0 дБ) и три полосы (0.8125 = 0 дБ при ходе −26…+6)
+let tempo = 0;                          // −1…1 → ×(1 + tempo · tempoRange)
+const chanKnobs = [], tempoKnobs = [];
 if (L) {
-  const deck = $('#deck'), size = 2 * L.jog.r * 500 / 470;            // r джога на фото = r470 нашей рамки
-  deck.style.left = L.jog.x * 100 + '%'; deck.style.top = L.jog.y * 100 + '%';
-  deck.style.width = deck.style.height = `calc(var(--h) * ${size.toFixed(4)})`;
-  if (L.jog.platter) $('#cpPlatter circle').setAttribute('r', Math.round(470 * L.jog.platter));
-  PADS.forEach((_, i) => { const p = L.pads[i % L.pads.length]; addPad(i, p.x * 100, p.y * 100, p.w * 100, p.h * 100); });   // «дом» падов второй деки — те же места на фото
+  (L.jogs || [L.jog]).forEach((j, i) => {                                // джоги по фото: r джога = r470 нашей рамки
+    const deck = $$('.deck')[i]; if (!deck) return; const size = 2 * j.r * 500 / 470;
+    deck.style.left = j.x * 100 + '%'; deck.style.top = j.y * 100 + '%';
+    deck.style.width = deck.style.height = `calc(var(--h) * ${size.toFixed(4)})`;
+  });
+  if (L.screen) $$('.jogName').forEach(e => e.style.width = (L.screen * 470 / 500 * 100) + '%');
+  if (L.display) { const d = L.display; display.style.left = (d.x + d.w / 2) * 100 + '%'; display.style.top = d.y * 100 + '%'; display.style.width = d.w * 100 + '%'; display.style.height = d.h * 100 + '%'; }
+  if (L.fader) { const f = L.fader; fader.style.top = f.y * 100 + '%'; fader.style.width = f.kw * 100 + '%'; fader.style.height = f.kh * 100 + '%';
+    const t = $('#faderTrack'); t.style.left = (f.x0 + f.x1) / 2 * 100 + '%'; t.style.top = f.y * 100 + '%'; t.style.width = (f.x1 - f.x0) * 100 + '%'; }
+  // вертикальные ручки: четыре канала (громкость, низкие, средние, высокие) и два темпа (оба — один общий темп)
+  const vslider = (g, cls, get, set) => {
+    const k = document.createElement('div'); k.className = 'vknob ' + cls; k.style.left = g.x * 100 + '%'; k.style.width = g.kw * 100 + '%'; k.style.height = g.kh * 100 + '%';
+    const t = document.createElement('div'); t.className = 'vtrack'; t.style.left = g.x * 100 + '%'; t.style.top = g.y0 * 100 + '%'; t.style.height = (g.y1 - g.y0) * 100 + '%'; t.style.width = (g.kw * 100) + '%';
+    $('#frame').append(t, k);
+    const place = () => k.style.top = (g.y1 - get() * (g.y1 - g.y0)) * 100 + '%';           // 0 внизу, 1 вверху
+    const drag = e => { const f = $('#frame').getBoundingClientRect(); set(Math.max(0, Math.min(1, (g.y1 - (e.clientY - f.top) / f.height) / (g.y1 - g.y0)))); };
+    [k, t].forEach(el => { el.addEventListener('pointerdown', e => { el.setPointerCapture(e.pointerId); el.onpointermove = drag; drag(e); }); el.addEventListener('pointerup', () => el.onpointermove = null); el.addEventListener('pointercancel', () => el.onpointermove = null); });
+    return place;
+  };
+  if (L.chans) L.chans.forEach((g, i) => chanKnobs.push(vslider(g, 'chan', () => chan[i], v => setChan(i, v))));
+  if (L.tempo) L.tempo.forEach(g => tempoKnobs.push(vslider(g, 'tempo', () => (tempo + 1) / 2, v => setTempo(v * 2 - 1))));
+  chanKnobs.forEach(f => f()); tempoKnobs.forEach(f => f());
+  // кроссфейдер — тянуть ручку или ткнуть в дорожку
+  if (L.fader) { const f = L.fader, t = $('#faderTrack'); t.style.pointerEvents = 'auto'; t.style.height = (f.kh * 100) + '%'; t.style.cursor = 'ew-resize';
+    const drag = e => { const r = $('#frame').getBoundingClientRect(); setMix(((e.clientX - r.left) / r.width - f.x0) / (f.x1 - f.x0)); if (typeof showMix === 'function') showMix(); };
+    [fader, t].forEach(el => { el.addEventListener('pointerdown', e => { el.setPointerCapture(e.pointerId); el.onpointermove = drag; drag(e); }); el.addEventListener('pointerup', () => el.onpointermove = null); el.addEventListener('pointercancel', () => el.onpointermove = null); }); }
   L.leds.forEach(col => {
     const els = col.map(([x, y], k) => {
       const e = document.createElement('div'); e.className = 'led'; e.style.setProperty('--c', L.led.colors[k]);
@@ -316,111 +270,16 @@ if (L) {
     leds.push({ els, v: 0 });
   });
   setLeds(null);
-} else {
-  PADS.forEach((_, i) => addPad(i, 24 + (i % 8) * 7.4, i < 8 ? 84 : 95, 6, 9));
 }
 
 // бороздки на диске
 const grooves = $('#grooves');
 for (let r = 135; r < 336; r += 4) grooves.appendChild(el('circle', { cx: CX, cy: CY, r }));
 
-// секции кольца
-const segs = [];
-for (let i = 0; i < SEG; i++) {
-  const a0 = -LIMIT + i * STEP + GAP / 2, a1 = a0 + STEP - GAP;
-  const g = el('g', { class: 'seg' });
-  g.appendChild(el('path', { d: arcPath(R_IN, R_OUT, a0, a1) }));
-  g.appendChild(el('path', { id: 'tp' + i, d: textArc(R_TXT, a0, a1), style: 'fill:none;stroke:none' }));   // направляющая текста, не рисуется
-  const t = el('text', { 'font-size': 30, 'text-anchor': 'middle', 'dominant-baseline': 'middle' });
-  const tp = tpath('tp' + i); t.appendChild(tp); g.appendChild(t);
-  g.appendChild(el('path', { id: 'np' + i, d: textArc(R_OUT - 14, a0, a1), style: 'fill:none;stroke:none' }));
-  const n = el('text', { class: 'n', 'font-size': 18, 'text-anchor': 'start', 'dominant-baseline': 'middle' });
-  const np = tpath('np' + i); np.setAttribute('startOffset', '4%'); np.textContent = i + 1; n.appendChild(np); g.appendChild(n);
-  g.addEventListener('click', () => { if (state === 'question' && !locked) { snapTo(i); commit(); } });
-  ring.appendChild(g); segs.push({ g, tp });
-}
-const segCenter = i => -LIMIT + (i + .5) * STEP;
+let rot = 0, state = 'idle';          // idle — ждём первого касания (браузер не даёт звук без жеста), play — играет
+const setRot = a => { rot = a; const t = `rotate(${a}deg)`; platter.style.transform = t; platter2.style.transform = t; };
+const angleOf = e => { const b = e.currentTarget.ownerSVGElement.getBoundingClientRect(); return Math.atan2(e.clientY - (b.top + b.height / 2), e.clientX - (b.left + b.width / 2)) * 180 / Math.PI; };
 
-function fillRing(options) {
-  segs.forEach((s, i) => {
-    const o = options[i];
-    s.g.classList.toggle('off', !o);
-    if (!o) return;
-    s.tp.textContent = o.text;
-    const len = o.text.length;
-    s.tp.parentNode.setAttribute('font-size', len <= 8 ? 30 : len <= 12 ? 24 : len <= 16 ? 19 : 15);
-  });
-}
-
-/* ───────── ВРАЩЕНИЕ ───────── */
-let rot = 0, state = 'start', selected = -1, drag = null, vel = 0, raf = 0, locked = false, dwell = 0;
-const setRot = a => { rot = a; platter.style.transform = `rotate(${a}deg)`; };
-function highlight() {
-  const i = rot >= -LIMIT && rot < LIMIT ? Math.floor((rot + LIMIT) / STEP) : -1;
-  if (i === selected) return;
-  selected = i;
-  segs.forEach((s, k) => s.g.classList.toggle('on', k === i));
-  if (i >= 0 && navigator.vibrate) navigator.vibrate(8);
-  // задержался на секции — считаем выбором
-  clearTimeout(dwell);
-  if (i >= 0 && drag) dwell = setTimeout(() => { if (drag && selected === i) { drag = null; platter.classList.remove('grab'); snapTo(i); commit(); } }, DATA.dwellMs);
-}
-const angleOf = e => { const b = $('#wheel').getBoundingClientRect(); return Math.atan2(e.clientY - (b.top + b.height / 2), e.clientX - (b.left + b.width / 2)) * 180 / Math.PI; };
-const clamp = a => { const over = LIMIT + 6; return Math.max(-over, Math.min(over, a)); };
-
-platter.addEventListener('pointerdown', e => {
-  if (state !== 'question' || locked) return;
-  cancelAnimationFrame(raf); platter.style.transition = 'none'; platter.classList.add('grab');
-  drag = { a: angleOf(e), r: rot, t: performance.now(), v: 0 }; platter.setPointerCapture(e.pointerId);
-  highlight();
-});
-platter.addEventListener('pointermove', e => {
-  if (!drag) return;
-  const a = angleOf(e); let d = a - drag.a; if (d > 180) d -= 360; if (d < -180) d += 360;
-  const now = performance.now(), prev = rot;
-  setRot(clamp(drag.r + d)); highlight();
-  drag.v = (rot - prev) / Math.max(1, now - drag.t) * 16; drag.t = now;
-});
-const endDrag = () => {
-  if (!drag) return; platter.classList.remove('grab'); clearTimeout(dwell);
-  vel = Math.abs(drag.v) > 1.5 ? drag.v : 0; drag = null;
-  if (Math.abs(vel) >= DATA.flickVel) return roulette();   // резкий рывок — случайный выбор
-  vel ? inertia() : settle();
-};
-// рулетка: маркер мечется по дуге, замедляясь, и встаёт на случайную секцию
-function roulette() {
-  cancelAnimationFrame(raf); locked = true;
-  const target = Math.floor(Math.random() * SEG), end = segCenter(target);
-  const t0 = performance.now(), dur = 1800;
-  tag.textContent = 'RANDOM!';
-  const zig = s => { const k = Math.floor(s / SPAN), f = s - k * SPAN; return k % 2 ? LIMIT - f : -LIMIT + f; };   // путь по зигзагу → угол
-  const off = Math.max(0, Math.min(SPAN, rot + LIMIT));                                          // старт с текущего угла
-  const k = 3 + Math.floor(off / SPAN), sEnd = k * SPAN + (k % 2 ? LIMIT - end : end + LIMIT);   // три прохода дуги и на цель
-  const path = sEnd - off;
-  const step = () => {
-    const u = Math.min(1, (performance.now() - t0) / dur), e = 1 - Math.pow(1 - u, 3);
-    setRot(zig(off + e * path)); highlight();
-    if (u < 1) raf = requestAnimationFrame(step);
-    else { locked = false; snapTo(target); commit(); }
-  };
-  step();
-}
-platter.addEventListener('pointerup', endDrag); platter.addEventListener('pointercancel', endDrag);
-
-const nearest = () => Math.max(0, Math.min(SEG - 1, Math.round((rot + LIMIT) / STEP - .5)));
-function inertia() {
-  vel *= .9; setRot(clamp(rot + vel)); highlight();
-  if (Math.abs(vel) > .3 && Math.abs(rot) < LIMIT + 5) raf = requestAnimationFrame(inertia); else settle();
-}
-function settle() { snapTo(nearest()); commit(); }        // отпустил — выбрал
-function snapTo(i) {
-  cancelAnimationFrame(raf);
-  platter.style.transition = 'transform .35s cubic-bezier(.2,.8,.3,1.2)';
-  setRot(segCenter(i)); highlight();
-}
-
-/* ───────── СЦЕНАРИЙ ───────── */
-let qi = 0, scores = [0, 0, 0, 0];
 /* ───────── МОСТ: события игры наружу (tools/bridge.py → Resolume, grandMA, MIDI) ─────────
    POST text/plain без CORS-преамбулы, не ждём ответа; моста нет — молчим. */
 const BRIDGE = { url: 'http://localhost:7777/ev', on: true };
@@ -430,294 +289,236 @@ function emit(ev) {
   try { fetch(BRIDGE.url, { method: 'POST', body: JSON.stringify(ev), headers: { 'Content-Type': 'text/plain' }, keepalive: true }).catch(() => {}); } catch (e) {}
 }
 
-function showStart() {
-  if (state === 'result') emit({ ev: 'back' });
-  state = 'start'; qi = 0; scores = [0, 0, 0, 0]; locked = false; emit({ ev: 'state', state: 'start' });
-  stopAll(); platter.classList.remove('spin'); platter.style.transition = 'none'; setRot(0); selected = -1;
-  segs.forEach(s => s.g.classList.remove('on', 'pick'));
-  display.classList.remove('eq'); result.classList.remove('show'); ring.classList.add('hidden');
-  $$('.pad').forEach(p => p.classList.remove('show')); padsHome(); back.classList.remove('show'); $('#pairBtn').classList.remove('show');
-  setLeds(null);
-  tag.textContent = 'DJ WHEEL'; question.textContent = DATA.title;
-  btn.textContent = 'START'; btn.className = 'pulse';
-  hint.textContent = 'жми старт';
-}
-function showQuestion() {
-  state = 'question'; emit({ ev: 'state', state: 'question', q: qi + 1 }); locked = false; const q = DATA.questions[qi];
-  ring.classList.remove('hidden'); fillRing(q.options);
-  tag.textContent = `ВОПРОС ${qi + 1} / ${DATA.questions.length}`; question.textContent = q.text;
-  btn.textContent = `${qi + 1}/${DATA.questions.length}`; btn.className = 'hub';
-  platter.style.transition = 'transform .5s ease'; setRot(0); selected = -1; segs.forEach(s => s.g.classList.remove('on', 'pick'));
-  hint.textContent = 'крути колесо: отпустил — выбрал';
-}
-function commit() {
-  if (selected < 0 || locked) return;
-  locked = true; const i = selected; emit({ ev: 'answer', q: qi + 1, choice: i + 1 });
-  segs[i].g.classList.add('pick'); blip();
-  DATA.questions[qi].options[i].score.forEach((v, p) => scores[p] += v);
-  setTimeout(() => { qi++; qi < DATA.questions.length ? showQuestion() : showResult(); }, DATA.settleMs);
-}
-function showResult() {
-  state = 'result'; emit({ ev: 'state', state: 'result' });
-  ring.classList.add('hidden'); btn.className = 'hidden'; hint.textContent = ''; setLeds(0);
-  tag.textContent = 'АНАЛИЗ'; question.textContent = 'СОБИРАЕМ ТВОЙ СЕТ…';
-  fadeBg();
-  const max = Math.max(...scores); const best = scores.map((v, i) => v === max ? i : -1).filter(i => i >= 0);
-  const p = DATA.profiles[best[Math.floor(Math.random() * best.length)]];
-  const pidx = DATA.profiles.indexOf(p); emit({ ev: 'profile', idx: pidx, col: pidx + 1, name: p.name, genre: (String(p.track).match(/([a-z0-9]+)_a\.ogg/i) || [])[1] || '' });
-  setTimeout(() => {
-    platter.style.transition = 'none'; platter.classList.add('spin');
-    padsShowcase();
-    setTimeout(() => {
-      display.classList.add('eq'); startMusic(p.track, p.track2);
-      $('#rTitle').textContent = p.name; $('#rText').textContent = '';
-      result.classList.add('show');
-      typeText($('#rText'), p.text);
-      setTimeout(() => { back.classList.add('show'); showPairBtn(); }, 700);    // после переезда падов
-    }, 500);
-  }, 2200);
-}
-function typeText(node, text) { let i = 0; const t = setInterval(() => { node.textContent = text.slice(0, ++i); if (i >= text.length) clearInterval(t); }, 28); }
-
-// полный экран можно просить только по жесту — делаем это на START (iPhone Safari не умеет, там — «На экран Домой»)
+// полный экран можно просить только по жесту — делаем это на первом касании (iPhone Safari не умеет, там — «На экран Домой»)
 function goFullscreen() {
   const el = document.documentElement, rq = el.requestFullscreen || el.webkitRequestFullscreen;
   if (rq && !document.fullscreenElement && !document.webkitFullscreenElement) { try { const p = rq.call(el, { navigationUI: 'hide' }); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
   if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
 }
-btn.addEventListener('click', () => { if (state === 'start') { goFullscreen(); ensureAudio(); preloadTracks(); startBg(); showQuestion(); emit({ ev: 'start' }); } });
-back.addEventListener('click', showStart);
 $$('.pad').forEach(p => {
   p.addEventListener('pointerdown', () => { playSample(p.dataset.s); p.classList.add('hit'); setTimeout(() => p.classList.remove('hit'), 120); });
 });
 
-/* ───────── ЗВУК + ЭКВАЛАЙЗЕР ───────── */
-let ac, analyser, master, bgGain, trackGain, gainA, gainB, synth = null, synthB = null, bgSynth = null, media = null, mediaB = null, bgMedia = null, eqRaf = 0;
-let mix = .5;                  // микс двух треков финала: 0 — только A, 1 — только B (фейдер деки)
+/* ───────── ЗВУК ───────── */
+let ac, analyser, master, trackGain, eqLow, eqMid, eqHigh, eqRaf = 0;
+let mix = .5;                  // микс двух половин трека: 0 — только A, 1 — только B (фейдер деки)
 function ensureAudio() {
-  if (ac) { ac.resume(); return; }
+  if (ac) { if (ac.state !== 'running') ac.resume(); return; }
   ac = new (window.AudioContext || window.webkitAudioContext)();
   analyser = ac.createAnalyser(); analyser.fftSize = 256; analyser.smoothingTimeConstant = .8;
   master = ac.createGain(); master.connect(analyser); analyser.connect(ac.destination);
-  bgGain = ac.createGain(); bgGain.connect(ac.destination);       // фон мимо анализатора: эквалайзер только для трека
   trackGain = ac.createGain(); trackGain.connect(master);
-  gainA = ac.createGain(); gainB = ac.createGain(); gainA.connect(trackGain); gainB.connect(trackGain); setMix(mix);
+  eqLow = ac.createBiquadFilter(); eqLow.type = 'lowshelf'; eqLow.frequency.value = DATA.eq.low;
+  eqMid = ac.createBiquadFilter(); eqMid.type = 'peaking'; eqMid.frequency.value = DATA.eq.mid; eqMid.Q.value = .7;
+  eqHigh = ac.createBiquadFilter(); eqHigh.type = 'highshelf'; eqHigh.frequency.value = DATA.eq.high;
+  eqLow.connect(eqMid).connect(eqHigh).connect(trackGain);
+  chan.forEach((v, i) => setChan(i, v));
+  loadVinyl(); drawEq();
 }
 function ramp(g, v, t) { g.gain.cancelScheduledValues(ac.currentTime); g.gain.setValueAtTime(g.gain.value, ac.currentTime); g.gain.linearRampToValueAtTime(v, ac.currentTime + t); }
-function startBg() {
-  bgGain.gain.setValueAtTime(0, ac.currentTime); ramp(bgGain, .22, 2);
-  if (DATA.bgTrack) { bgMedia = new Audio(DATA.bgTrack); bgMedia.loop = true; ac.createMediaElementSource(bgMedia).connect(bgGain); bgMedia.play(); }
-  else bgSynth = makePad(bgGain);
-}
-function fadeBg() { if (!ac) return; ramp(bgGain, 0, 2); setTimeout(stopBg, 2100); }
-function stopBg() { if (bgMedia) { bgMedia.pause(); bgMedia = null; } if (bgSynth) { bgSynth.stop(); bgSynth = null; } }
-// финал: два сведённых трека стартуют разом, фейдер микса переливает один в другой (равная мощность)
-function setMix(x) {
-  mix = Math.max(0, Math.min(1, x));
-  const now = performance.now(); if (now - emitMixT > 50) { emitMixT = now; emit({ ev: 'mix', v: +mix.toFixed(3) }); } if (!ac) return;
-  gainA.gain.setTargetAtTime(Math.cos(mix * Math.PI / 2), ac.currentTime, .02);
-  gainB.gain.setTargetAtTime(Math.sin(mix * Math.PI / 2), ac.currentTime, .02);
-}
-// файлы треков декодируются заранее и стартуют из буферов в один и тот же момент аудиочасов —
-// так два сведённых трека совпадают до сэмпла (у <audio> разброс старта в миллисекунды слышен как фленджер)
 const bufs = {};
 function loadBuf(url) {
   if (!bufs[url]) bufs[url] = fetch(url).then(r => r.arrayBuffer()).then(b => ac.decodeAudioData(b)).catch(e => { console.warn('трек не загрузился', url, e); delete bufs[url]; return null; });
   return bufs[url];
 }
-function preloadTracks() { ensureAudio(); DATA.profiles.forEach(p => [p.track, p.track2].forEach(u => u && loadBuf(u))); }
-async function startMusic(url, url2) {
-  trackGain.gain.setValueAtTime(0, ac.currentTime); ramp(trackGain, .8, 1.5);
-  const [ba, bb] = await Promise.all([url ? loadBuf(url) : null, url2 ? loadBuf(url2) : null]);
-  if (state !== 'result') return;                                   // пока грузилось, нажали НАЗАД
-  const t0 = ac.currentTime + .08;
-  const src = (b, out) => { const sn = ac.createBufferSource(); sn.buffer = b; sn.loop = true; sn.connect(out); sn.start(t0); return sn; };
-  if (ba) media = src(ba, gainA); else synth = makeBeat(gainA, 0, t0);
-  if (bb) mediaB = src(bb, gainB); else synthB = makeBeat(gainB, 1, t0);
-  drawEq();
+
+/* ───────── ВИНИЛ: пару треков читает воркет с любой скоростью, в том числе назад ─────────
+   Пока диск не трогают — скорость 1 и диск крутится сам (33⅓ об/мин). Коснулся — оба трека замерли, вращение
+   двигает общую позицию (скорость колеса / DATA.vinyl), отпустил — разгон до обычного хода. Параметр mix —
+   фейдер деки между первым и вторым треком пары (равная мощность). Треки лежат в воркете как Int16. */
+const VINYL_SRC = `
+class Vinyl extends AudioWorkletProcessor {
+  static get parameterDescriptors() { return [{ name: 'mix', defaultValue: .5, minValue: 0, maxValue: 1, automationRate: 'k-rate' }]; }
+  constructor() {
+    super(); this.tracks = {}; this.pair = null; this.len = 0; this.pos = 0; this.rate = 1; this.target = 1; this.k = 1; this.n = 0; this.count = 0;
+    this.port.onmessage = e => {
+      const m = e.data;
+      if (m.track != null) { this.tracks[m.track] = m.ch; this.len = m.len; this.count = m.count; }
+      if (m.pair) { this.pair = m.pair; this.pos = 0; this.rate = this.target = 1; this.k = 1; }
+      if (m.rate != null) { this.target = m.rate; this.k = m.ms ? 1 - Math.exp(-1000 / (m.ms * sampleRate)) : 1; }
+      if (m.stop) this.pair = null;
+    };
+  }
+  process(_, outputs, params) {
+    const out = outputs[0]; if (!out.length) return true;
+    const L = out[0], R = out[1] || out[0], n = L.length, len = this.len;
+    const A = this.pair && this.tracks[this.pair[0]], B = this.pair && this.tracks[this.pair[1]];
+    if (!A) { L.fill(0); R.fill(0); return true; }
+    const m = params.mix[0], ga = Math.cos(m * Math.PI / 2) / 32768, gb = Math.sin(m * Math.PI / 2) / 32768;
+    const a0 = A[0], a1 = A[1] || A[0], b0 = B ? B[0] : null, b1 = B ? (B[1] || B[0]) : null;
+    for (let i = 0; i < n; i++) {
+      this.rate += (this.target - this.rate) * this.k;
+      let p = this.pos;
+      if (p >= len) { p -= len; if (this.rate > 0) { this.pair = [this.pair[1], (this.pair[1] + 1) % this.count]; this.port.postMessage({ pair: this.pair }); this.pos = p; return this.process(_, outputs, params); } }
+      if (p < 0) p += len; if (p < 0 || p >= len) p = 0;
+      const i0 = p | 0, f = p - i0, i1 = i0 + 1 < len ? i0 + 1 : 0;
+      let l = (a0[i0] + (a0[i1] - a0[i0]) * f) * ga, r = (a1[i0] + (a1[i1] - a1[i0]) * f) * ga;
+      if (b0) { l += (b0[i0] + (b0[i1] - b0[i0]) * f) * gb; r += (b1[i0] + (b1[i1] - b1[i0]) * f) * gb; }
+      L[i] = l; R[i] = r; this.pos = p + this.rate;
+    }
+    if (++this.n % 4 === 0) this.port.postMessage({ pos: this.pos, rate: this.rate });
+    return true;
+  }
 }
-function stopAll() {
-  cancelAnimationFrame(eqRaf); stopBg();
-  if (media) { try { media.stop(); } catch (e) {} media = null; }
-  if (mediaB) { try { mediaB.stop(); } catch (e) {} mediaB = null; }
-  if (synth) { synth.stop(); synth = null; }
-  if (synthB) { synthB.stop(); synthB = null; }
+registerProcessor('vinyl', Vinyl);`;
+let vinyl = null, vinylReady = null, vpos = 0, vrate = 1, vt = 0, vRaf = 0, vBase = 0, pair = null;
+function loadVinyl() {
+  if (vinylReady || !ac.audioWorklet) return;
+  const url = URL.createObjectURL(new Blob([VINYL_SRC], { type: 'application/javascript' }));
+  vinylReady = ac.audioWorklet.addModule(url).then(() => {
+    vinyl = new AudioWorkletNode(ac, 'vinyl', { numberOfInputs: 0, outputChannelCount: [2] });
+    vinyl.connect(eqLow); setMix(mix); vinylRate(baseRate(), 50);
+    vinyl.port.onmessage = e => {
+      const m = e.data;
+      if (m.pos != null) { vpos = m.pos; vrate = m.rate; vt = performance.now(); }
+      if (m.pair) { vBase = rot; vpos = 0; vt = performance.now(); showPair(m.pair); if (!touchHold) vinylRate(baseRate(), 1); }
+    };
+  }).catch(e => { console.warn('воркет винила не поднялся', e); vinylReady = null; });
+}
+let trackLen = 0;
+async function sendTrack(i) {                                   // трек → Int16 в воркет (передача без копирования)
+  const b = await loadBuf(DATA.tracks[i].url); if (!b || !vinyl) return false;
+  if (!trackLen) trackLen = b.length;
+  const len = Math.min(trackLen, b.length), ch = Array.from({ length: b.numberOfChannels }, (_, c) => { const f = b.getChannelData(c), o = new Int16Array(len); for (let k = 0; k < len; k++) o[k] = f[k] * 32767; return o; });
+  delete bufs[DATA.tracks[i].url];                               // в основном потоке копия не нужна
+  vinyl.port.postMessage({ track: i, ch, len, count: DATA.tracks.length }, ch.map(x => x.buffer)); return true;
+}
+function showPair(p) {
+  pair = p; const [i, j] = p; tag.textContent = `ПАРА ${i + 1} – ${j + 1}`; question.textContent = `${DATA.tracks[i].name}  ⟷  ${DATA.tracks[j].name}`;
+  jogA.textContent = DATA.tracks[i].name; jogB.textContent = DATA.tracks[j].name; showFader();
+  emit({ ev: 'pair', a: i + 1, b: j + 1, nameA: DATA.tracks[i].name, nameB: DATA.tracks[j].name });
+}
+async function startPlay() {
+  if (state !== 'idle') return; state = 'play'; emit({ ev: 'state', state: 'play' }); emit({ ev: 'start' });
+  display.classList.add('eq'); setLeds(0);
+  trackGain.gain.setValueAtTime(0, ac.currentTime); ramp(trackGain, .8 * chan[0] * chan[0], 1.2);
+  if (vinylReady) await vinylReady;
+  if (!vinyl) { question.textContent = 'НУЖЕН НОВЫЙ БРАУЗЕР'; return; }   // без AudioWorklet (очень старые браузеры) игры нет
+  const n = DATA.tracks.length;
+  jogA.textContent = DATA.tracks[0].name; jogB.textContent = DATA.tracks[1 % n].name; setTempo(tempo);
+  if (!(await sendTrack(0)) || !(await sendTrack(1 % n))) return;
+  vinyl.port.postMessage({ pair: [0, 1 % n] }); vinylRate(baseRate(), 1); vpos = 0; vrate = 1; vt = performance.now(); vBase = rot; showPair([0, 1 % n]); spinLoop();
+  for (let i = 2; i < n; i++) await sendTrack(i);               // остальные — следом, к смене пары успеют
+}
+// диск крутится по позиции трека: между сообщениями воркета угол дотягиваем по скорости
+function spinLoop() {
+  const p = vpos + vrate * (performance.now() - vt) / 1000 * ac.sampleRate;
+  setRot(vBase + p / ac.sampleRate * DATA.vinyl);
+  vRaf = requestAnimationFrame(spinLoop);
+}
+// скретч: скорость колеса (градусов/с) → скорость трека; нет движения 60 мс при удержании — стоп
+let touchHold = null, holdT = 0;
+function vinylRate(r, ms) { if (vinyl) vinyl.port.postMessage({ rate: r, ms }); }
+const baseRate = () => 1 + tempo * DATA.tempoRange;
+// фейдер темпа (оба на пульте — один общий): меняет скорость обоих треков, высота тоже плывёт, как на виниле
+function setTempo(t) {
+  tempo = Math.max(-1, Math.min(1, t)); tempoKnobs.forEach(f => f());
+  const bpm = (DATA.bpm * baseRate()).toFixed(1); jogAbpm.textContent = 'A · ' + bpm; jogBbpm.textContent = 'B · ' + bpm;
+  if (!touchHold) vinylRate(baseRate(), 120);
+  emit({ ev: 'tempo', v: +tempo.toFixed(3), bpm: +bpm });
+}
+// фейдеры каналов: 0 — громкость (0 дБ вверху, тишина внизу), 1..3 — низкие / средние / высокие (−26…+6 дБ)
+const CHAN_NAMES = ['vol', 'low', 'mid', 'high'];
+function setChan(i, v) {
+  chan[i] = Math.max(0, Math.min(1, v)); if (chanKnobs[i]) chanKnobs[i]();
+  if (ac) {
+    if (i === 0) trackGain.gain.setTargetAtTime(.8 * chan[0] * chan[0], ac.currentTime, .02);
+    else { const db = DATA.eq.min + chan[i] * (DATA.eq.max - DATA.eq.min); [eqLow, eqMid, eqHigh][i - 1].gain.setTargetAtTime(db, ac.currentTime, .02); }
+  }
+  emit({ ev: 'chan', n: i + 1, name: CHAN_NAMES[i], v: +chan[i].toFixed(3) });
+}
+function scratchTouch(on) {
+  if (state !== 'play' || !vinyl) return;
+  if (on) { touchHold = { t: performance.now(), a: null }; platters.forEach(p => p.classList.add('grab')); vinylRate(0, DATA.touchStopMs); emit({ ev: 'scratch', on: true }); }
+  else if (touchHold) { touchHold = null; platters.forEach(p => p.classList.remove('grab')); clearTimeout(holdT); vinylRate(baseRate(), DATA.releaseMs); emit({ ev: 'scratch', on: false }); }
+}
+function scratchDeg(deg, dtMs) {
+  if (state !== 'play' || !vinyl) return;
+  if (!touchHold) { touchHold = { t: performance.now(), a: null, auto: true }; platters.forEach(p => p.classList.add('grab')); }   // джог без датчика касания: держим, пока идут тики
+  vinylRate(deg / Math.max(1, dtMs) * 1000 / DATA.vinyl, 12);
+  clearTimeout(holdT); holdT = setTimeout(() => { if (touchHold && touchHold.auto) scratchTouch(false); else vinylRate(0, 30); }, touchHold.auto ? 90 : 60);
+}
+platters.forEach(pl => {                                        // оба диска скретчат одну общую позицию
+  pl.addEventListener('pointerdown', e => {
+    scratchTouch(true); if (!touchHold) return;
+    pl.setPointerCapture(e.pointerId); touchHold.a = angleOf(e); touchHold.t = performance.now();
+  });
+  pl.addEventListener('pointermove', e => {
+    if (!touchHold || touchHold.a == null) return;
+    const a = angleOf(e); let d = a - touchHold.a; if (d > 180) d -= 360; if (d < -180) d += 360;
+    const now = performance.now(); scratchDeg(d, now - touchHold.t); touchHold.a = a; touchHold.t = now;
+  });
+  pl.addEventListener('pointerup', () => scratchTouch(false)); pl.addEventListener('pointercancel', () => scratchTouch(false));
+});
+function nextPair() { if (state === 'play' && vinyl && pair) { const p = [pair[1], (pair[1] + 1) % DATA.tracks.length]; vinyl.port.postMessage({ pair: p }); vinylRate(baseRate(), 1); vBase = rot; vpos = 0; vt = performance.now(); showPair(p); emit({ ev: 'next' }); } }
+// без пульта: фейдер — стрелки ← → (или A / D), следующая пара — N
+addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'ф') { setMix(mix - .05); if (typeof showMix === 'function') showMix(); }
+  if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'в') { setMix(mix + .05); if (typeof showMix === 'function') showMix(); }
+  if (e.key === 'n' || e.key === 'т') nextPair();
+  if (e.key === 'ArrowUp') setTempo(tempo + .05); if (e.key === 'ArrowDown') setTempo(tempo - .05);
+});
+
+// фейдер деки: равная мощность между треками пары
+function setMix(x) {
+  mix = Math.max(0, Math.min(1, x));
+  const now = performance.now(); if (now - emitMixT > 50) { emitMixT = now; emit({ ev: 'mix', v: +mix.toFixed(3) }); } if (!ac) return;
+  if (vinyl) vinyl.parameters.get('mix').setTargetAtTime(mix, ac.currentTime, .02);
+  showFader();
+}
+// ручка кроссфейдера на фото и подсветка имени трека, который громче
+function showFader() {
+  if (L && L.fader) fader.style.left = (L.fader.x0 + mix * (L.fader.x1 - L.fader.x0)) * 100 + '%';
+  $('#jogA').classList.toggle('hot', mix < .35); $('#jogB').classList.toggle('hot', mix > .65);
 }
 
-// одноразовые семплы (синтез, пока нет файлов)
+// семплы падов
 const sampleBuf = {};
 function playSample(name, vol = 1) {
   ensureAudio();
-  const out = ac.createGain(); out.gain.value = vol; out.connect(master);
-  const url = DATA.samples[name];
-  if (!url || sampleBuf[name]) emit({ ev: 'pad', n: PADS.findIndex(p => p[0] === name) + 1, name });   // один раз на удар, не на догрузку файла
-  if (url) {
-    if (sampleBuf[name]) { const s = ac.createBufferSource(); s.buffer = sampleBuf[name]; s.connect(out); s.start(); }
-    else fetch(url).then(r => r.arrayBuffer()).then(b => ac.decodeAudioData(b)).then(b => { sampleBuf[name] = b; playSample(name); });
-    return;
-  }
-  const t = ac.currentTime;
-  if (name === 'kick') {
-    const o = ac.createOscillator(), g = ac.createGain();
-    o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(42, t + .14);
-    g.gain.setValueAtTime(1.2, t); g.gain.exponentialRampToValueAtTime(.001, t + .35);
-    o.connect(g).connect(out); o.start(t); o.stop(t + .4);
-  } else if (name === 'hat' || name === 'clap') {
-    const len = name === 'hat' ? .12 : .25, b = ac.createBuffer(1, ac.sampleRate * len, ac.sampleRate), d = b.getChannelData(0);
-    for (let i = 0; i < d.length; i++) { const x = i / d.length; d[i] = (Math.random() * 2 - 1) * (name === 'hat' ? Math.pow(1 - x, 5) : Math.pow(1 - x, 2) * (x < .03 || (x > .04 && x < .07) || x > .09 ? 1 : .3)); }
-    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
-    s.buffer = b; f.type = name === 'hat' ? 'highpass' : 'bandpass'; f.frequency.value = name === 'hat' ? 7000 : 1800; f.Q.value = name === 'hat' ? 1 : .8;
-    g.gain.value = name === 'hat' ? .5 : .9; s.connect(f).connect(g).connect(out); s.start(t);
-  } else if (name === 'tom') {              // том: тон с быстрым спадом высоты
-    const o = ac.createOscillator(), g = ac.createGain();
-    o.type = 'sine'; o.frequency.setValueAtTime(230, t); o.frequency.exponentialRampToValueAtTime(95, t + .28);
-    g.gain.setValueAtTime(1, t); g.gain.exponentialRampToValueAtTime(.001, t + .45); o.connect(g).connect(out); o.start(t); o.stop(t + .5);
-  } else if (name === 'crash') {            // тарелка: длинный шум с верхами
-    const b = ac.createBuffer(1, ac.sampleRate * 1.4, ac.sampleRate), d = b.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
-    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
-    s.buffer = b; f.type = 'highpass'; f.frequency.value = 4500; g.gain.value = .55; s.connect(f).connect(g).connect(out); s.start(t);
-  } else if (name === 'horn') {             // эйр-хорн: одна нота — три расстроенные пилы аккордом
-    [[0, .6]].forEach(([at, len]) => [233, 311, 349].forEach((fr, k) => {
-      const o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter(), s0 = t + at;
-      o.type = 'sawtooth'; o.frequency.setValueAtTime(fr * .97, s0); o.frequency.linearRampToValueAtTime(fr, s0 + .04); o.detune.value = (k - 1) * 9;
-      f.type = 'lowpass'; f.frequency.value = 2400; g.gain.setValueAtTime(0, s0); g.gain.linearRampToValueAtTime(.22, s0 + .015); g.gain.setValueAtTime(.22, s0 + len - .04); g.gain.linearRampToValueAtTime(0, s0 + len);
-      o.connect(f).connect(g).connect(out); o.start(s0); o.stop(s0 + len + .02);
-    }));
-  } else if (name === 'laser') {            // лазер: свип сверху вниз
-    const o = ac.createOscillator(), g = ac.createGain();
-    o.type = 'square'; o.frequency.setValueAtTime(3200, t); o.frequency.exponentialRampToValueAtTime(140, t + .32);
-    g.gain.setValueAtTime(.55, t); g.gain.exponentialRampToValueAtTime(.001, t + .34); o.connect(g).connect(out); o.start(t); o.stop(t + .36);
-  } else {                                  // snare: тон ~190 Гц + шумовой хвост
-    const o = ac.createOscillator(), g = ac.createGain();
-    o.frequency.setValueAtTime(190, t); o.frequency.exponentialRampToValueAtTime(120, t + .1);
-    g.gain.setValueAtTime(.7, t); g.gain.exponentialRampToValueAtTime(.001, t + .18);
-    o.connect(g).connect(out); o.start(t); o.stop(t + .2);
-    const b = ac.createBuffer(1, ac.sampleRate * .22, ac.sampleRate), dd = b.getChannelData(0);
-    for (let i = 0; i < dd.length; i++) dd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / dd.length, 2.5);
-    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), ng = ac.createGain();
-    s.buffer = b; f.type = 'highpass'; f.frequency.value = 1500; ng.gain.value = .8; s.connect(f).connect(ng).connect(out); s.start(t);
-  }
+  const url = DATA.samples[name]; if (!url) return;
+  if (sampleBuf[name]) {
+    emit({ ev: 'pad', n: PADS.findIndex(p => p[0] === name) + 1, name });   // один раз на удар, не на догрузку файла
+    const out = ac.createGain(); out.gain.value = vol; out.connect(master);
+    const s = ac.createBufferSource(); s.buffer = sampleBuf[name]; s.connect(out); s.start();
+  } else fetch(url).then(r => r.arrayBuffer()).then(b => ac.decodeAudioData(b)).then(b => { sampleBuf[name] = b; playSample(name, vol); });
 }
-function blip() {                       // щелчок подтверждения выбора
-  if (!ac) return; const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
-  o.frequency.value = 1400; g.gain.setValueAtTime(.15, t); g.gain.exponentialRampToValueAtTime(.001, t + .08);
-  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .1);
-}
-// фон на вопросах: тихий пад из двух расстроенных пил через фильтр, аккорды по кругу
-function makePad(out) {
-  const chords = [[0, 3, 7, 10], [5, 8, 12, 15], [3, 7, 10, 14], [-2, 2, 5, 9]];
-  const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 500; f.Q.value = .7;
-  const lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = .08; lg.gain.value = 250; lfo.connect(lg).connect(f.frequency); lfo.start();
-  f.connect(out);
-  let ci = 0, timer; const oscs = [];
-  const play = () => {
-    const t = ac.currentTime;
-    oscs.forEach(o => { o.g.gain.linearRampToValueAtTime(0, t + 1.5); o.o.stop(t + 1.6); }); oscs.length = 0;
-    chords[ci++ % chords.length].forEach(n => [-6, 6].forEach(det => {
-      const o = ac.createOscillator(), g = ac.createGain();
-      o.type = 'sawtooth'; o.frequency.value = 110 * Math.pow(2, n / 12); o.detune.value = det;
-      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.06, t + 1.5);
-      o.connect(g).connect(f); o.start(t); oscs.push({ o, g });
-    }));
-    timer = setTimeout(play, 6000);
-  };
-  play();
-  return { stop: () => { clearTimeout(timer); oscs.forEach(o => o.o.stop()); lfo.stop(); } };
-}
-// заглушка трека: простой техно-луп из осцилляторов, чтобы эквалайзеру было что показывать
-// variant 0 — трек A (бочка, хэт, бас), variant 1 — трек B (бочка, хлопок, открытый хэт, арпеджио); общий t0 держит их в такт
-function makeBeat(out, variant = 0, t0 = ac.currentTime + .05) {
-  const bpm = 126, beat = 60 / bpm, notes = [41.2, 41.2, 49, 55, 41.2, 41.2, 36.7, 49];
-  let n = 0, t = t0, timer;
-  const noise = (len, pow) => { const b = ac.createBuffer(1, Math.round(ac.sampleRate * len), ac.sampleRate), d = b.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, pow); const s = ac.createBufferSource(); s.buffer = b; return s; };
-  const tickB = () => {
-    while (t < ac.currentTime + .3) {
-      const step = n % 16;
-      if (step % 4 === 0) { const k = ac.createOscillator(), kg = ac.createGain();
-        k.frequency.setValueAtTime(140, t); k.frequency.exponentialRampToValueAtTime(45, t + .1);
-        kg.gain.setValueAtTime(.8, t); kg.gain.exponentialRampToValueAtTime(.001, t + .2); k.connect(kg).connect(out); k.start(t); k.stop(t + .25); }
-      if (step % 8 === 4) { const c = noise(.2, 2.5), f = ac.createBiquadFilter(), g = ac.createGain(); f.type = 'bandpass'; f.frequency.value = 1700; g.gain.value = .7; c.connect(f).connect(g).connect(out); c.start(t); }
-      if (step % 4 === 2) { const h = noise(.14, 2), f = ac.createBiquadFilter(), g = ac.createGain(); f.type = 'highpass'; f.frequency.value = 8000; g.gain.value = .3; h.connect(f).connect(g).connect(out); h.start(t); }
-      const o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter(), arp = [0, 7, 12, 15, 12, 7, 3, 7];
-      o.type = 'square'; o.frequency.value = notes[Math.floor(step / 8) * 4 % 8] * 8 * Math.pow(2, arp[step % 8] / 12); f.type = 'lowpass'; f.frequency.setValueAtTime(2600, t); f.frequency.exponentialRampToValueAtTime(600, t + .15);
-      g.gain.setValueAtTime(.12, t); g.gain.exponentialRampToValueAtTime(.001, t + .16); o.connect(f).connect(g).connect(out); o.start(t); o.stop(t + .18);
-      t += beat / 4; n++;
-    }
-    timer = setTimeout(tickB, 100);
-  };
-  if (variant === 1) { tickB(); return { stop: () => clearTimeout(timer) }; }
-  const tick = () => {
-    while (t < ac.currentTime + .3) {
-      const step = n % 16;
-      const k = ac.createOscillator(), kg = ac.createGain();
-      k.frequency.setValueAtTime(150, t); k.frequency.exponentialRampToValueAtTime(40, t + .12);
-      kg.gain.setValueAtTime(step % 4 === 0 ? 1 : 0, t); kg.gain.exponentialRampToValueAtTime(.001, t + .25);
-      k.connect(kg).connect(out); k.start(t); k.stop(t + .3);
-      const h = ac.createBufferSource(), hb = ac.createBuffer(1, 2205, ac.sampleRate), d = hb.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 6);
-      h.buffer = hb; const hf = ac.createBiquadFilter(); hf.type = 'highpass'; hf.frequency.value = 7000;
-      const hg = ac.createGain(); hg.gain.value = step % 2 ? .35 : .12; h.connect(hf).connect(hg).connect(out); h.start(t);
-      const b = ac.createOscillator(), bg = ac.createGain(), bf = ac.createBiquadFilter();
-      b.type = 'sawtooth'; b.frequency.value = notes[step % 8] * 2; bf.type = 'lowpass'; bf.frequency.setValueAtTime(900, t); bf.frequency.exponentialRampToValueAtTime(200, t + .2);
-      bg.gain.setValueAtTime(step % 4 === 0 ? 0 : .35, t); bg.gain.exponentialRampToValueAtTime(.001, t + .22);
-      b.connect(bf).connect(bg).connect(out); b.start(t); b.stop(t + .25);
-      t += beat / 4; n++;
-    }
-    timer = setTimeout(tick, 100);
-  };
-  tick();
-  return { stop: () => clearTimeout(timer) };
-}
-// временно: все пары треков из профилей, переключение на финале кнопкой или клавишей N
-const PAIRS = [...DATA.profiles.filter((p, i, arr) => p.track && arr.findIndex(q => q.track === p.track) === i).map(p => ({ a: p.track, b: p.track2 })), ...(DATA.testPairs || [])]
-  .map(x => ({ ...x, label: (x.a.match(/([a-z0-9]+)_a\.ogg/i) || [])[1] || '?' }));
-let pairIdx = -1;
-function showPairBtn() {
-  if (PAIRS.length < 2) return;
-  const cur = DATA.profiles.find(p => p.name === $('#rTitle').textContent); pairIdx = Math.max(0, PAIRS.findIndex(x => cur && x.a === cur.track));
-  $('#pairBtn').textContent = 'ПАРА: ' + PAIRS[pairIdx].label.toUpperCase(); $('#pairBtn').classList.add('show');
-}
-function switchPair() {
-  if (state !== 'result' || PAIRS.length < 2) return;
-  pairIdx = (pairIdx + 1) % PAIRS.length; const pr = PAIRS[pairIdx]; $('#pairBtn').textContent = 'ПАРА: ' + pr.label.toUpperCase();
-  [media, mediaB].forEach(m => { if (m) try { m.stop(); } catch (e) {} }); media = mediaB = null;
-  if (synth) { synth.stop(); synth = null; } if (synthB) { synthB.stop(); synthB = null; }
-  startMusic(pr.a, pr.b);
-}
-$('#pairBtn').addEventListener('click', switchPair);
-addEventListener('keydown', e => { if (e.key === 'n' || e.key === 'N' || e.key === 'т' || e.key === 'Т') switchPair(); });
+function preloadSamples() { if (!ac) return; Object.entries(DATA.samples).forEach(([n, u]) => { if (u && !sampleBuf[n]) fetch(u).then(r => r.arrayBuffer()).then(b => ac.decodeAudioData(b)).then(b => { sampleBuf[n] = b; }); }); }
 
 function drawEq() {
   cancelAnimationFrame(eqRaf);
   const c = $('#eq'), ctx = c.getContext('2d');
   const buf = new Uint8Array(analyser.frequencyBinCount);
   const loop = () => {
-    const w = c.width = c.clientWidth * devicePixelRatio, h = c.height = c.clientHeight * devicePixelRatio;
     analyser.getByteFrequencyData(buf);
-    ctx.clearRect(0, 0, w, h);
-    const bars = 40, bw = w / bars, pad = bw * .25;
-    if (leds.length) {                     // светодиоды каналов: 8 полос от баса к верху, падают с инерцией
+    if (leds.length && state === 'play') {   // светодиоды каналов: 8 полос от баса к верху, падают с инерцией
       setLeds(leds.map((c, i) => {
         const a = Math.floor(Math.pow(i / leds.length, 1.6) * 48), b = Math.floor(Math.pow((i + 1) / leds.length, 1.6) * 48) + 1;
         let m = 0; for (let k = a; k < b; k++) m = Math.max(m, buf[k]);
         return c.v = Math.max(c.v - .05, Math.min(1, m / 255 * 1.15));
       }));
     }
-    for (let i = 0; i < bars; i++) {
-      const v = buf[Math.floor(Math.pow(i / bars, 1.4) * 56)] / 255;
-      const bh = Math.max(3, v * h * .85);
-      const g = ctx.createLinearGradient(0, h, 0, h - bh);
-      g.addColorStop(0, '#2fd85a'); g.addColorStop(.7, '#e8e14a'); g.addColorStop(1, '#ff3b3b');
-      ctx.fillStyle = g; ctx.fillRect(i * bw + pad, h - bh - h * .08, bw - pad * 2, bh);
+    if (display.classList.contains('eq')) {
+      const w = c.width = c.clientWidth * devicePixelRatio, h = c.height = c.clientHeight * devicePixelRatio;
+      ctx.clearRect(0, 0, w, h);
+      const bars = 40, bw = w / bars, pad = bw * .25;
+      for (let i = 0; i < bars; i++) {
+        const v = buf[Math.floor(Math.pow(i / bars, 1.4) * 56)] / 255;
+        const bh = Math.max(3, v * h * .85);
+        const g = ctx.createLinearGradient(0, h, 0, h - bh);
+        g.addColorStop(0, '#2fd85a'); g.addColorStop(.7, '#e8e14a'); g.addColorStop(1, '#ff3b3b');
+        ctx.fillStyle = g; ctx.fillRect(i * bw + pad, h - bh - h * .08, bw - pad * 2, bh);
+      }
     }
     eqRaf = requestAnimationFrame(loop);
   };
   loop();
 }
 
-showStart();
+// первое касание экрана: полный экран, звук, семплы, и сразу поехал первый трек
+function begin() { goFullscreen(); ensureAudio(); preloadSamples(); startPlay(); }
+addEventListener('pointerdown', begin, { once: true });
+emit({ ev: 'state', state: 'idle' });
 </script>
 <script src="midi.js"></script>
 </body>

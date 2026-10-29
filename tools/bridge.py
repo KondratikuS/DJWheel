@@ -13,8 +13,9 @@
               или {"midi": [status, data1, data2]}. В addr/args работают подстановки
               {n}, {name}, {state}, {q}, {choice}, {idx}, {v} … — все поля события;
               {v127} — число 0..1 переведённое в 0..127. Пустой список = событие не слать.
-События от страницы: pad (n 1..8, name), play, cue, start, state (state), answer (q, choice),
-profile (idx 0..3, name), mix (v 0..1), jog (d градусов).
+События от страницы: pad (n 1..16, name), play, cue, start, back, state (state: select|play),
+select (idx, col, name — маркер встал на трек), track (idx, col, name, genre — трек запущен),
+scratch (on true/false — коснулись/отпустили диск), mix (v 0..1).
 """
 import argparse, ctypes, json, socket, struct, sys, threading, time
 from ctypes import wintypes
