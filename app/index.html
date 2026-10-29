@@ -569,7 +569,7 @@ function renderDeck() {
   };
 }
 // ── вкладка ВЫХОДЫ: карта событий → OSC (Resolume, grandMA) и MIDI; живёт в tools/bridge.json через мост
-const EVENTS = [['pad', 'Пад', '{n} 1…16, {name}', { n: 1, name: 'kick' }], ['start', 'Первый запуск', '', {}], ['play', 'PLAY', '', {}], ['pause', 'PAUSE', '', {}],
+const EVENTS = [...PADS.map((p, i) => ['pad' + (i + 1), `Пад ${i + 1} · ${p[1]}`, '', { n: i + 1, name: p[0] }]), ['start', 'Первый запуск', '', {}], ['play', 'PLAY', '', {}], ['pause', 'PAUSE', '', {}],
   ['cue', 'CUE', '', {}], ['pair', 'Новая пара треков', '{a} {b} 1…3, {nameA} {nameB}', { a: 1, b: 2, nameA: 'A', nameB: 'B' }], ['next', 'Пара переключена вручную', '', {}],
   ['scratch', 'Скретч', '{on} true/false', { on: true }], ['mix', 'Кроссфейдер', '{v} 0…1, {v127}', { v: .5 }], ['tempo', 'Темп', '{v} −1…1, {bpm}', { v: 0, bpm: 124 }],
   ['chan', 'Фейдер канала', '{n} 1…4, {name} vol/low/mid/high, {v}, {v127}', { n: 1, name: 'vol', v: 1 }], ['state', 'Состояние', '{state} idle/play', { state: 'play' }]];
@@ -588,6 +588,7 @@ async function renderOut(given) {                         // given — карт�
   el.innerHTML = `<div class="row"><span>Resolume</span><input class="short" data-t="resolume.host" value="${esc(c.targets.resolume?.host || '127.0.0.1')}" style="width:9em"><input class="short" data-t="resolume.port" value="${esc(c.targets.resolume?.port || 7000)}">
       <span>grandMA</span><input class="short" data-t="ma.host" value="${esc(c.targets.ma?.host || '127.0.0.1')}" style="width:9em"><input class="short" data-t="ma.port" value="${esc(c.targets.ma?.port || 8000)}">
       <span>MIDI-выход</span><input data-t="midi_out" value="${esc(c.midi_out || '')}" style="width:12em"></div>
+    <p class="muted">Основной выход — 16 падов: у каждого свои действия. Ниже — события игры.</p>
     <table><tr><th>событие</th><th>подстановки</th><th>действия</th><th></th></tr>
     ${EVENTS.map(([ev, t, subs, sample]) => `<tr><td><b>${t}</b><br><code>${ev}</code></td><td class="muted">${esc(subs)}</td><td>${(c.map[ev] || []).map((a, i) => act(ev, i, a)).join('')}
       <div class="act"><button data-add="${ev}" data-kind="resolume">+ Resolume</button><button data-add="${ev}" data-kind="ma">+ grandMA</button><button data-add="${ev}" data-kind="midi">+ MIDI</button></div></td>
@@ -608,7 +609,7 @@ async function renderOut(given) {                         // given — карт�
     const b = e.target;
     if (b.dataset.add) { const cur = read(); cur.map[b.dataset.add].push(b.dataset.kind === 'midi' ? { midi: [144, 1, 127], off_ms: 120 } : { to: b.dataset.kind, addr: b.dataset.kind === 'ma' ? '/gma3/cmd' : '/composition/', args: [] }); renderOut(cur); }
     else if (b.hasAttribute('data-del')) { const d = b.closest('.act'); d.remove(); }
-    else if (b.dataset.test) { const s = EVENTS.find(x => x[0] === b.dataset.test); emit({ ev: s[0], ...s[3] }); $('#outStatus').textContent = 'послано: ' + s[0]; }
+    else if (b.dataset.test) { const s = EVENTS.find(x => x[0] === b.dataset.test); emit({ ev: s[0].startsWith('pad') ? 'pad' : s[0], ...s[3] }); $('#outStatus').textContent = 'послано: ' + s[0]; }
     else if (b.hasAttribute('data-save')) {
       const cur = read(); $('#outStatus').textContent = 'сохраняю…';
       try { const r = await fetch(BRIDGE.url.replace('/ev', '/config'), { method: 'POST', body: JSON.stringify(cur), headers: { 'Content-Type': 'text/plain' } }).then(r => r.json());

@@ -1,5 +1,5 @@
 {
-  "_": "Карта событий игры → Resolume / grandMA (OSC) и MIDI. Правится в игре: шестерёнка → ВЫХОДЫ. Подстановки {поле} из события, {v127} — 0..1 → 0..127.",
+  "_": "Карта событий игры → Resolume / grandMA (OSC) и MIDI. Правится в игре: шестерёнка → ВЫХОДЫ. 16 падов — строки pad1…pad16. Подстановки {поле} из события, {v127} — 0..1 → 0..127.",
   "http_port": 7777,
   "targets": {
     "resolume": {
@@ -16,10 +16,10 @@
   "midi_out": "DJ Wheel Out A",
   "_midi": "виртуальный порт (tools/midi_loop.cmd создаёт пару); Resolume и MA слушают «DJ Wheel Out B» как MIDI-контроллер",
   "map": {
-    "pad": [
+    "pad1": [
       {
         "to": "resolume",
-        "addr": "/composition/layers/1/clips/{n}/connect",
+        "addr": "/composition/layers/1/clips/1/connect",
         "args": [
           1
         ]
@@ -28,13 +28,373 @@
         "to": "ma",
         "addr": "/gma3/cmd",
         "args": [
-          "Go+ Executor {n}"
+          "Go+ Executor 1"
         ]
       },
       {
         "midi": [
           144,
-          "{n}",
+          1,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "pad2": [
+      {
+        "to": "resolume",
+        "addr": "/composition/layers/1/clips/2/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 2"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          2,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "pad3": [
+      {
+        "to": "resolume",
+        "addr": "/composition/layers/1/clips/3/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 3"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          3,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "pad4": [
+      {
+        "to": "resolume",
+        "addr": "/composition/layers/1/clips/4/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 4"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          4,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "pad5": [
+      {
+        "to": "resolume",
+        "addr": "/composition/layers/1/clips/5/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 5"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          5,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "pad6": [
+      {
+        "to": "resolume",
+        "addr": "/composition/layers/1/clips/6/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 6"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          6,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "pad7": [
+      {
+        "to": "resolume",
+        "addr": "/composition/layers/1/clips/7/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 7"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          7,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "pad8": [
+      {
+        "to": "resolume",
+        "addr": "/composition/layers/1/clips/8/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 8"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          8,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "pad9": [
+      {
+        "to": "resolume",
+        "addr": "/composition/layers/1/clips/9/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 9"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          9,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "pad10": [
+      {
+        "to": "resolume",
+        "addr": "/composition/layers/1/clips/10/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 10"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          10,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "pad11": [
+      {
+        "to": "resolume",
+        "addr": "/composition/layers/1/clips/11/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 11"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          11,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "pad12": [
+      {
+        "to": "resolume",
+        "addr": "/composition/layers/1/clips/12/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 12"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          12,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "pad13": [
+      {
+        "to": "resolume",
+        "addr": "/composition/layers/1/clips/13/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 13"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          13,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "pad14": [
+      {
+        "to": "resolume",
+        "addr": "/composition/layers/1/clips/14/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 14"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          14,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "pad15": [
+      {
+        "to": "resolume",
+        "addr": "/composition/layers/1/clips/15/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 15"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          15,
+          127
+        ],
+        "off_ms": 120
+      }
+    ],
+    "pad16": [
+      {
+        "to": "resolume",
+        "addr": "/composition/layers/1/clips/16/connect",
+        "args": [
+          1
+        ]
+      },
+      {
+        "to": "ma",
+        "addr": "/gma3/cmd",
+        "args": [
+          "Go+ Executor 16"
+        ]
+      },
+      {
+        "midi": [
+          144,
+          16,
           127
         ],
         "off_ms": 120

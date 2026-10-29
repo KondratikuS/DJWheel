@@ -13,7 +13,7 @@
               или {"midi": [status, data1, data2]}. В addr/args работают подстановки
               {n}, {name}, {state}, {q}, {choice}, {idx}, {v} … — все поля события;
               {v127} — число 0..1 переведённое в 0..127. Пустой список = событие не слать.
-События от страницы: pad (n 1..16, name), play, cue, start, back, state (state: select|play),
+События от страницы: pad (n 1..16, name; в карте — строки pad1…pad16, общая pad — запасная), play, cue, start, back, state (state: select|play),
 select (idx, col, name — маркер встал на трек), track (idx, col, name, genre — трек запущен),
 scratch (on true/false — коснулись/отпустили диск), mix (v 0..1).
 """
@@ -74,7 +74,8 @@ class Bridge:
         self.targets = cfg.get('targets', {})
 
     def handle(self, ev):
-        name = ev.get('ev'); acts = self.cfg.get('map', {}).get(name)
+        name = ev.get('ev'); m = self.cfg.get('map', {}); acts = m.get(name)
+        if name == 'pad' and m.get('pad' + str(ev.get('n'))) is not None: acts = m['pad' + str(ev.get('n'))]   # у каждого пада своя строка
         if 'v' in ev and isinstance(ev['v'], (int, float)): ev['v127'] = int(round(max(0, min(1, ev['v'])) * 127))
         if acts is None:
             if self.verbose: print('  нет правила:', ev); return
