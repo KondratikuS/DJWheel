@@ -1,6 +1,6 @@
 @echo off
-rem ÐœÐ¾ÑÑ‚ DJ Wheel â†’ Resolume / grandMA / MIDI. Ð¡Ð¾Ð·Ð´Ð°Ñ‘Ñ‚ Ð²Ð¸Ñ€Ñ‚ÑƒÐ°Ð»ÑŒÐ½Ñ‹Ð¹ MIDI-Ð¿Ð¾Ñ€Ñ‚ Â«DJ Wheel Out A/BÂ»
-rem (Ð²Ñ€ÐµÐ¼ÐµÐ½Ð½Ñ‹Ð¹, Ð´Ð¾ Ð¿ÐµÑ€ÐµÐ·Ð°Ð³Ñ€ÑƒÐ·ÐºÐ¸) Ð¸ Ð·Ð°Ð¿ÑƒÑÐºÐ°ÐµÑ‚ Ð¼Ð¾ÑÑ‚ Ñ Ð¿Ð¾Ð´Ñ€Ð¾Ð±Ð½Ñ‹Ð¼ Ð²Ñ‹Ð²Ð¾Ð´Ð¾Ð¼. ÐžÐºÐ½Ð¾ Ð½Ðµ Ð·Ð°ÐºÑ€Ñ‹Ð²Ð°Ñ‚ÑŒ.
+rem Œ®áâ DJ Wheel -> Resolume / grandMA / MIDI. ‘®§¤ ñâ ¢¨àâã «ì­ë© MIDI-¯®àâ "DJ Wheel Out A/B"
+rem (¢à¥¬¥­­ë©, ¤® ¯¥à¥§ £àã§ª¨) ¨ § ¯ãáª ¥â ¬®áâ á ¯®¤à®¡­ë¬ ¢ë¢®¤®¬. Žª­® ­¥ § ªàë¢ âì.
 "C:\Program Files\Windows MIDI Services\Tools\Console\midi.exe" loopback create --name-a "DJ Wheel Out A" --name-b "DJ Wheel Out B" >nul 2>&1
 cd /d "%~dp0"
 where python >nul 2>&1 && (set PY=python) || (set PY=py)

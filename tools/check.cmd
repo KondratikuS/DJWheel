@@ -1,13 +1,15 @@
 @echo off
-rem ╨Я╤А╨╛╨▓╨╡╤А╨║╨░ ╤Б╤В╨╡╨╜╨┤╨░ ╨┐╨╡╤А╨╡╨┤ ╨╖╨░╨┐╤Г╤Б╨║╨╛╨╝: Python, Chrome, MIDI-╤Г╤Б╤В╤А╨╛╨╣╤Б╤В╨▓╨░, ╨╖╨░╨╜╤П╤В╨╛╤Б╤В╤М ╨┐╨╛╤А╤В╨╛╨▓.
+rem Проверка стенда перед запуском: Python, Chrome, MIDI-устройства, занятость портов.
 echo === Python
-where python py 2>nul || echo   ╨Э╨Х╨в: ╨┐╨╛╤Б╤В╨░╨▓╨╕╤В╤М Python 3 ╤Б python.org (╨│╨░╨╗╨╛╤З╨║╨░ "Add to PATH")
+where python py 2>nul || echo   НЕТ: поставить Python 3 с python.org (галочка "Add to PATH")
 echo === Chrome
-reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe" /ve 2>nul | find "REG_SZ" || echo   Chrome ╨╜╨╡ ╨╜╨░╨╣╨┤╨╡╨╜ (╨┐╨╛╨┤╨╛╨╣╨┤╤С╤В ╨╕ Edge)
-echo === ╨Я╨╛╤А╤В╤Л 8090 (╨╕╨│╤А╨░) ╨╕ 7777 (╨╝╨╛╤Б╤В): ╨╡╤Б╨╗╨╕ ╨╜╨╕╨╢╨╡ ╨╡╤Б╤В╤М ╤Б╤В╤А╨╛╨║╨╕ LISTENING тАФ ╤Г╨╢╨╡ ╨╖╨░╨┐╤Г╤Й╨╡╨╜╨╛
+set CHR=
+for %%R in (HKLM HKCU) do reg query "%%R\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe" /ve >nul 2>&1 && set CHR=1
+if defined CHR (echo   есть) else (echo   Chrome не найден: подойдёт Edge, но лучше поставить Chrome)
+echo === Порты 8090 (игра) и 7777 (мост): если ниже есть строки LISTENING - уже запущено
 netstat -ano | findstr ":8090 :7777" | findstr LISTENING
-echo === MIDI-╤Г╤Б╤В╤А╨╛╨╣╤Б╤В╨▓╨░
-powershell -NoProfile -Command "Get-PnpDevice -Class MEDIA -Status OK | Select-Object -ExpandProperty FriendlyName"
-echo === Windows MIDI Services (╨┤╨╗╤П ╨▓╨╕╤А╤В╤Г╨░╨╗╤М╨╜╨╛╨│╨╛ ╨┐╨╛╤А╤В╨░ ╨▓ Resolume/MA, ╨╜╨╡ ╨╛╨▒╤П╨╖╨░╤В╨╡╨╗╤М╨╜╨╛)
-if exist "C:\Program Files\Windows MIDI Services\Tools\Console\midi.exe" (echo   ╨╡╤Б╤В╤М) else (echo   ╨╜╨╡╤В: winget install Microsoft.MIDI.SDK)
+echo === MIDI-устройства
+powershell -NoProfile -Command "$d = Get-PnpDevice -PresentOnly | Where-Object { $_.FriendlyName -match 'MIDI|XDJ|DDJ|Pioneer' } | Select-Object -ExpandProperty FriendlyName -Unique; if ($d) { $d } else { '  дека не видна: USB, питание, CONTROL MODE' }"
+echo === Windows MIDI Services (для виртуального порта в Resolume/MA, не обязательно)
+if exist "C:\Program Files\Windows MIDI Services\Tools\Console\midi.exe" (echo   есть) else (echo   нет: winget install Microsoft.MIDI.SDK)
 pause

@@ -1,7 +1,7 @@
 @echo off
-rem Ð¡Ð¾Ð·Ð´Ð°Ñ‘Ñ‚ MIDI-Ð¿ÐµÑ‚Ð»ÑŽ Â«DJ Wheel AÂ» <-> Â«DJ Wheel BÂ» (Windows MIDI Services).
-rem ÐŸÐµÑ‚Ð»Ñ Ð²Ñ€ÐµÐ¼ÐµÐ½Ð½Ð°Ñ: Ð¶Ð¸Ð²Ñ‘Ñ‚ Ð´Ð¾ Ð¿ÐµÑ€ÐµÐ·Ð°Ð¿ÑƒÑÐºÐ° ÑÐ»ÑƒÐ¶Ð±Ñ‹ MIDI Ð¸Ð»Ð¸ ÐŸÐš â€” Ñ‚Ð¾Ð³Ð´Ð° Ð·Ð°Ð¿ÑƒÑÑ‚Ð¸Ñ‚ÑŒ ÑÐ½Ð¾Ð²Ð°.
-rem ÐŸÐ¾ÑÑ‚Ð¾ÑÐ½Ð½ÑƒÑŽ Ð¼Ð¾Ð¶Ð½Ð¾ ÑÐ´ÐµÐ»Ð°Ñ‚ÑŒ Ð² Ð¿Ñ€Ð¸Ð»Ð¾Ð¶ÐµÐ½Ð¸Ð¸ MIDI Settings (ÐŸÑƒÑÐº -> MIDI Settings -> Loopbacks).
+rem ‘®§¤ ñâ MIDI-¯¥â«î "DJ Wheel A" <-> "DJ Wheel B" (Windows MIDI Services).
+rem ¥â«ï ¢à¥¬¥­­ ï: ¦¨¢ñâ ¤® ¯¥à¥§ ¯ãáª  á«ã¦¡ë MIDI ¨«¨ Š - â®£¤  § ¯ãáâ¨âì á­®¢ .
+rem ®áâ®ï­­ãî ¬®¦­® á¤¥« âì ¢ ¯à¨«®¦¥­¨¨ MIDI Settings (ãáª -> MIDI Settings -> Loopbacks).
 "C:\Program Files\Windows MIDI Services\Tools\Console\midi.exe" loopback create --name-a "DJ Wheel A" --name-b "DJ Wheel B"
 python "%~dp0midi_loop_check.py" "DJ Wheel"
 pause

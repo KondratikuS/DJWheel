@@ -1,5 +1,5 @@
 @echo off
-rem ÐŸÐ¾Ð´Ð½Ð¸Ð¼Ð°ÐµÑ‚ Ð¸Ð³Ñ€Ñƒ Ð½Ð° http://localhost:8090/ Ð¸Ð· Ð¿Ð°Ð¿ÐºÐ¸ app Ð¸ Ð¾Ñ‚ÐºÑ€Ñ‹Ð²Ð°ÐµÑ‚ ÐµÑ‘ Ð² Chrome. Ð‘ÐµÐ· Ð¼Ð¾ÑÑ‚Ð°.
+rem ®¤­¨¬ ¥â ¨£àã ­  http://localhost:8090/ ¨§ ¯ ¯ª¨ app ¨ ®âªàë¢ ¥â ¥ñ ¢ Chrome. ¥§ ¬®áâ .
 cd /d "%~dp0..\app"
 where python >nul 2>&1 && (set PY=python) || (set PY=py)
 start "" "http://localhost:8090/"

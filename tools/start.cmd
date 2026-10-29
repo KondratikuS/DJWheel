@@ -1,6 +1,6 @@
 @echo off
-rem Ð—Ð°Ð¿ÑƒÑÐº ÑÑ‚ÐµÐ½Ð´Ð° Ñ†ÐµÐ»Ð¸ÐºÐ¾Ð¼: Ð¼Ð¾ÑÑ‚ (Resolume / grandMA / MIDI) Ð² ÑÐ²Ð¾Ñ‘Ð¼ Ð¾ÐºÐ½Ðµ + Ð¸Ð³Ñ€Ð° Ð² Chrome.
-rem Ð—Ð°ÐºÑ€Ñ‹Ñ‚ÑŒ Ð²ÑÑ‘ â€” Ð·Ð°ÐºÑ€Ñ‹Ñ‚ÑŒ Ð¾Ð±Ð° Ð¾ÐºÐ½Ð°.
+rem ‡ ¯ãáª áâ¥­¤  æ¥«¨ª®¬: ¬®áâ (Resolume / grandMA / MIDI) ¢ á¢®ñ¬ ®ª­¥ + ¨£à  ¢ Chrome.
+rem ‡ ªàëâì ¢áñ - § ªàëâì ®¡  ®ª­ .
 cd /d "%~dp0"
 where python >nul 2>&1 && (set PY=python) || (set PY=py)
 start "DJ Wheel bridge" cmd /k ""C:\Program Files\Windows MIDI Services\Tools\Console\midi.exe" loopback create --name-a "DJ Wheel Out A" --name-b "DJ Wheel Out B" >nul 2>&1 & %PY% bridge.py -v"
