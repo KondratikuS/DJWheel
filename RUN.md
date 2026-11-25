@@ -3,6 +3,28 @@
 Приложение — один HTML-файл, серверу ничего считать не надо. Нужны: Windows, Chrome (или Edge), Python 3
 (любой, без пакетов) и, если есть, дека Pioneer по USB.
 
+## 0а. Без интернета — установщик
+
+Папка `DJWheel-Setup` (около 1,9 ГБ) переносится на стенд целиком: `DJWheel-Setup.exe` (игра, мост, свой Python)
+и рядом `programs\` — Resolume Arena 7.26.1, grandMA2 onPC 3.9.63.11, Windows MIDI Services, драйвер XDJ-XZ.
+Установщик:
+1. ставит игру в `%USERPROFILE%\DJWheel` и ярлык «DJ Wheel» на рабочий стол (повторная установка сохраняет
+   `tools\bridge.json`);
+2. ставит из `programs\` то, чего на ПК ещё нет (Arena, MA, MIDI Services — тихо; драйвер деки — своим окном);
+3. включает в Arena приём OSC (7000) и веб-сервер (8080) — правит её `Documents\Resolume Arena\Preferences`,
+   Arena при этом должна быть закрыта;
+4. запускает всё и открывает **мастер привязки** (`app/setup.html`): список клипов Arena и экзекьюторов/кью MA,
+   каждому из 16 падов выбирается клип и кью, кнопка «Проверить» шлёт пад.
+
+Руками один раз — в grandMA2 onPC: Setup → Console → Global Settings → Telnet → Login Enabled, сохранить шоу
+(флажок живёт в шоу, файлом его не включить). Лицензию Arena активировать самому.
+
+Потом: всё запускает ярлык «DJ Wheel» или `START DJ Wheel.cmd` (Arena и MA тоже, если не запущены), мастер —
+`SETUP DJ Wheel.cmd`, в игре — ссылка во вкладке ВЫХОДЫ.
+
+Собрать заново: установщики положить в `programs\` проекта (в git не идёт), затем
+`powershell -File tools\build_installer.ps1` → `dist\DJWheel-Setup\`.
+
 ## 0. Если на стенде только Claude Desktop
 
 Ничего заранее не копировать. Открыть Claude Desktop, вкладка Code, любая папка, режим auto, и написать:
@@ -87,7 +109,8 @@ XDJ-XZ видна как два порта «XDJ-XZ (1)/(2)», это норма
 tools\bridge.cmd
 ```
 
-Слушает события игры на `http://localhost:7777/ev` и шлёт OSC: Resolume на 7000, grandMA на 8000 (gma3), плюс
+Слушает события игры на `http://localhost:7777/ev` и шлёт: Resolume — OSC на 7000, grandMA2 — команды по Telnet
+(порт 30000, `targets.ma2`, действие `{"ma2": "Goto Cue 2 Executor 1.1"}`), grandMA3 — OSC на 8000, плюс
 MIDI в виртуальный порт «DJ Wheel Out» — его создаёт `tools\midi_loop.cmd` (нужны Windows MIDI Services Tools,
 `winget install Microsoft.MIDI.SDK`; петля живёт до перезагрузки). Что куда слать — `tools/bridge.json`,
 события: `pad`, `pair`, `next`, `scratch`, `mix`, `tempo`, `chan`, `play`, `cue`, `start`. Проверка без программ:

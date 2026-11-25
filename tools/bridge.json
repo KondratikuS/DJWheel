@@ -5,12 +5,20 @@
     "resolume": {
       "host": "127.0.0.1",
       "port": 7000,
-      "_": "Arena → Preferences → OSC → Enable OSC Input, порт 7000"
+      "_": "Arena → Preferences → OSC → Enable OSC Input, порт 7000; Webserver → Enable, порт 8080 (мастер читает клипы). Установщик включает оба сам.",
+      "rest_port": 8080
     },
     "ma": {
       "host": "127.0.0.1",
       "port": 8000,
       "_": "grandMA3: Menu → Network → OSC, вход 8000, префикс gma3. grandMA2 (3.3+): Setup → Network → OSC, адреса /gma2/…"
+    },
+    "ma2": {
+      "host": "127.0.0.1",
+      "port": 30000,
+      "user": "administrator",
+      "password": "admin",
+      "_": "grandMA2 по Telnet: Setup → Console → Global Settings → Telnet → Login Enabled, сохранить шоу. Действие в карте: {\"ma2\": \"Goto Cue 2 Executor 1.1\"}"
     }
   },
   "midi_out": "DJ Wheel Out A",

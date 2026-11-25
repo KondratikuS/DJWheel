@@ -1,7 +1,7 @@
 @echo off
 rem Проверка стенда перед запуском: Python, Chrome, MIDI-устройства, занятость портов.
 echo === Python
-where python py 2>nul || echo   НЕТ: поставить Python 3 с python.org (галочка "Add to PATH")
+if exist "%~dp0..\python\python.exe" (echo   свой, в папке python) else (where python py 2>nul || echo   НЕТ: поставить Python 3 с python.org, галочка Add to PATH)
 echo === Chrome
 set CHR=
 for %%R in (HKLM HKCU) do reg query "%%R\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe" /ve >nul 2>&1 && set CHR=1

@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DJ Wheel — привязка</title>
+<style>
+  :root { --bg: #111317; --card: #1b1e24; --line: #2c3038; --text: #e8e8ea; --dim: #8b919c; --ok: #2fd85a; --bad: #ff5d6c; --acc: #4a9bff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 'Segoe UI', sans-serif; padding: 24px 16px 80px; }
+  main { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 0 0 8px; }
+  p { margin: 6px 0; }
+  .dim { color: var(--dim); }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 16px 0; }
+  .st { font-weight: 600; } .st.ok { color: var(--ok); } .st.bad { color: var(--bad); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { color: var(--dim); font-weight: 500; font-size: 13px; }
+  td.pad { font-weight: 700; white-space: nowrap; }
+  td.pad i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  select { width: 100%; background: #0e1014; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px; font: inherit; }
+  button { background: #2a2f38; color: var(--text); border: 1px solid #3a404b; border-radius: 6px; padding: 7px 14px; font: inherit; cursor: pointer; }
+  button.main { background: var(--acc); border-color: var(--acc); color: #fff; font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  code { background: #0e1014; padding: 1px 5px; border-radius: 4px; }
+  #bar { position: fixed; left: 0; right: 0; bottom: 0; background: #0b0c0f; border-top: 1px solid var(--line); padding: 10px 16px; }
+  #bar .row { max-width: 980px; margin: 0 auto; }
+  @media (max-width: 640px) { th.hide, td.hide { display: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Привязка падов к Resolume и grandMA2</h1>
+  <p class="dim">Откройте свою композицию в Arena и шоу в MA, затем нажмите «Обновить». Каждому из 16 падов можно назначить клип и кью. Карта сохраняется в <code>tools\bridge.json</code>, мост подхватывает её сразу.</p>
+
+  <section>
+    <h2>Связь</h2>
+    <p>Мост: <span id="sBridge" class="st">…</span></p>
+    <p>Resolume Arena: <span id="sRes" class="st">…</span></p>
+    <p>grandMA2: <span id="sMa" class="st">…</span></p>
+    <div class="row" style="margin-top:10px"><button id="reload">Обновить</button>
+      <button id="autoRes">Клипы по порядку</button><button id="autoMa">Кью по порядку</button></div>
+  </section>
+
+  <section>
+    <h2>Пады</h2>
+    <table>
+      <thead><tr><th>Пад</th><th>Клип Resolume</th><th>grandMA2</th><th class="hide"></th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </section>
+</main>
+<div id="bar"><div class="row"><button class="main" id="save">Сохранить</button><span id="saveSt" class="dim"></span></div></div>
+
+<script>
+const BRIDGE = 'http://localhost:7777';
+const PADS = [['KICK', '#2fd85a'], ['HAT', '#e8e14a'], ['CLAP', '#ff7a3b'], ['SNARE', '#4a9bff'], ['TAMB', '#c77dff'], ['CRASH', '#e8e8ea'],
+  ['CYMBAL', '#3de0d0'], ['HORN', '#ff4d6d'], ['LASER', '#3de0d0'], ['HIT', '#e8e14a'], ['ZAP', '#ff4d6d'], ['COWBELL', '#ff7a3b'],
+  ['RIM', '#4a9bff'], ['YEAH', '#c77dff'], ['DROP', '#2fd85a'], ['WHOOSH', '#e8e8ea']];   // как PADS в index.html
+const $ = s => document.querySelector(s);
+let cfg = null, clips = [], execs = [];
+
+const resAddr = c => `/composition/layers/${c.layer}/clips/${c.clip}/connect`;
+const resLabel = c => `${c.layer_name} · ${c.clip}${c.name ? ' — ' + c.name : ''}`;
+const maOpts = () => execs.flatMap(e => [[`Go+ Executor ${e.no}`, `${e.no} ${e.name} — Go+`],
+  ...e.cues.map(q => [`Goto Cue ${q} Executor ${e.no}`, `${e.no} ${e.name} — кью ${q}`])]);
+
+function status(el, ok, text) { el.textContent = text; el.className = 'st ' + (ok ? 'ok' : 'bad'); }
+
+function render() {
+  const maList = maOpts(), body = $('#rows'); body.innerHTML = '';
+  PADS.forEach(([name, col], i) => {
+    const acts = (cfg && cfg.map['pad' + (i + 1)]) || [];
+    const curRes = (acts.find(a => a.to === 'resolume') || {}).addr || '';
+    const curMa = (acts.find(a => a.ma2) || {}).ma2 || '';
+    const resSel = `<option value="">— нет —</option>` + clips.map(c => `<option value="${resAddr(c)}">${esc(resLabel(c))}</option>`).join('')
+      + (curRes && !clips.some(c => resAddr(c) === curRes) ? `<option value="${esc(curRes)}">${esc(curRes)} (нет в композиции)</option>` : '');
+    const maSel = `<option value="">— нет —</option>` + maList.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('')
+      + (curMa && !maList.some(([v]) => v === curMa) ? `<option value="${esc(curMa)}">${esc(curMa)} (нет в шоу)</option>` : '');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="pad"><i style="background:${col}"></i>${i + 1} ${name}</td><td><select data-k="res">${resSel}</select></td>
+      <td><select data-k="ma">${maSel}</select></td><td class="hide"><button data-test="${i + 1}">Проверить</button></td>`;
+    tr.querySelector('[data-k=res]').value = curRes; tr.querySelector('[data-k=ma]').value = curMa;
+    body.appendChild(tr);
+  });
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+async function load() {
+  $('#reload').disabled = true;
+  try {
+    cfg = await (await fetch(BRIDGE + '/config')).json(); status($('#sBridge'), true, 'работает');
+    const d = await (await fetch(BRIDGE + '/discover')).json();
+    clips = d.resolume || []; execs = d.ma2 || [];
+    status($('#sRes'), !d.resolume_error, d.resolume_error || `клипов с содержимым: ${clips.length}`);
+    status($('#sMa'), !d.ma2_error, d.ma2_error || `экзекьюторов: ${execs.length}, кью: ${execs.reduce((n, e) => n + e.cues.length, 0)}`);
+  } catch (e) {
+    status($('#sBridge'), false, 'не отвечает. Запустите «START DJ Wheel» или tools\\bridge.cmd');
+    status($('#sRes'), false, '—'); status($('#sMa'), false, '—');
+  }
+  render(); $('#reload').disabled = false;
+}
+
+function collect() {
+  const map = JSON.parse(JSON.stringify(cfg.map));
+  [...$('#rows').children].forEach((tr, i) => {
+    const key = 'pad' + (i + 1), res = tr.querySelector('[data-k=res]').value, ma = tr.querySelector('[data-k=ma]').value;
+    // старые OSC-правила grandMA3 (to: "ma") MA2 не понимает — заменяем Telnet-командой
+    const keep = (map[key] || []).filter(a => a.to !== 'resolume' && a.to !== 'ma' && !a.ma2);
+    if (res) keep.unshift({ to: 'resolume', addr: res, args: [1] });
+    if (ma) keep.push({ ma2: ma });
+    map[key] = keep;
+  });
+  return Object.assign({}, cfg, { map });
+}
+
+async function save() {
+  if (!cfg) return;
+  const r = await (await fetch(BRIDGE + '/config', { method: 'POST', body: JSON.stringify(collect()) })).json();
+  $('#saveSt').textContent = r.ok ? 'сохранено ' + new Date().toLocaleTimeString() : 'ошибка: ' + r.error;
+  if (r.ok) cfg = await (await fetch(BRIDGE + '/config')).json();
+  return r.ok;
+}
+
+$('#reload').onclick = load;
+$('#save').onclick = save;
+$('#autoRes').onclick = () => [...$('#rows').children].forEach((tr, i) => { if (clips[i]) tr.querySelector('[data-k=res]').value = resAddr(clips[i]); });
+$('#autoMa').onclick = () => { const l = maOpts().filter(([v]) => v.startsWith('Goto')); [...$('#rows').children].forEach((tr, i) => { if (l[i]) tr.querySelector('[data-k=ma]').value = l[i][0]; }); };
+$('#rows').onclick = async e => {
+  const n = e.target.dataset.test; if (!n) return;
+  if (await save()) fetch(BRIDGE + '/ev', { method: 'POST', body: JSON.stringify({ ev: 'pad', n: +n, name: PADS[n - 1][0].toLowerCase() }) });
+};
+load();
+</script>
+</body>
+</html>

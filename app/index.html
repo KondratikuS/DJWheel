@@ -582,8 +582,11 @@ async function renderOut(given) {                         // given — карт�
   try { cfgOut = given || await fetch(BRIDGE.url.replace('/ev', '/config'), { cache: 'no-store' }).then(r => r.json()); }
   catch (e) { el.innerHTML = `<p class="status">Мост не запущен — запусти <code>tools\\bridge.cmd</code> на этом компьютере и открой вкладку снова.</p>`; return; }
   const c = cfgOut; c.map = c.map || {}; c.targets = c.targets || {};
-  const act = (ev, i, a) => a.midi
-    ? `<div class="act" data-ev="${ev}" data-i="${i}"><select data-f="type"><option value="resolume">OSC → Resolume</option><option value="ma">OSC → grandMA</option><option value="midi" selected>MIDI</option></select>
+  const act = (ev, i, a) => a.ma2 !== undefined
+    ? `<div class="act" data-ev="${ev}" data-i="${i}"><select data-f="type"><option value="ma2" selected>grandMA2 (Telnet)</option></select>
+       <input data-f="cmd" value="${esc(a.ma2)}" style="width:22em" placeholder="Goto Cue 2 Executor 1.1"> <button class="del" data-del>✕</button></div>`
+    : a.midi
+    ?`<div class="act" data-ev="${ev}" data-i="${i}"><select data-f="type"><option value="resolume">OSC → Resolume</option><option value="ma">OSC → grandMA</option><option value="midi" selected>MIDI</option></select>
        <input class="short" data-f="st" value="${esc(a.midi[0])}" title="статус: 144 нота, 176 CC"> <input class="short" data-f="d1" value="${esc(a.midi[1])}" title="нота / номер CC"> <input class="short" data-f="d2" value="${esc(a.midi[2])}" title="сила / значение">
        <span class="muted">откл. через</span> <input class="short" data-f="off" value="${esc(a.off_ms || '')}" placeholder="мс"> <button class="del" data-del>✕</button></div>`
     : `<div class="act" data-ev="${ev}" data-i="${i}"><select data-f="type"><option value="resolume" ${a.to === 'resolume' ? 'selected' : ''}>OSC → Resolume</option><option value="ma" ${a.to === 'ma' ? 'selected' : ''}>OSC → grandMA</option><option value="midi">MIDI</option></select>
@@ -591,26 +594,28 @@ async function renderOut(given) {                         // given — карт�
   el.innerHTML = `<div class="row"><span>Resolume</span><input class="short" data-t="resolume.host" value="${esc(c.targets.resolume?.host || '127.0.0.1')}" style="width:9em"><input class="short" data-t="resolume.port" value="${esc(c.targets.resolume?.port || 7000)}">
       <span>grandMA</span><input class="short" data-t="ma.host" value="${esc(c.targets.ma?.host || '127.0.0.1')}" style="width:9em"><input class="short" data-t="ma.port" value="${esc(c.targets.ma?.port || 8000)}">
       <span>MIDI-выход</span><input data-t="midi_out" value="${esc(c.midi_out || '')}" style="width:12em"></div>
-    <p class="muted">Основной выход — 16 падов: у каждого свои действия. Ниже — события игры.</p>
+    <p class="muted">Основной выход — 16 падов: у каждого свои действия. Ниже — события игры.
+      Клипы Arena и кью grandMA2 удобнее выбирать списком — <a href="setup.html" target="_blank" style="color:#8fb6ff">мастер привязки</a>.</p>
     <table><tr><th>событие</th><th>подстановки</th><th>действия</th><th></th></tr>
     ${EVENTS.map(([ev, t, subs, sample]) => `<tr><td><b>${t}</b><br><code>${ev}</code></td><td class="muted">${esc(subs)}</td><td>${(c.map[ev] || []).map((a, i) => act(ev, i, a)).join('')}
-      <div class="act"><button data-add="${ev}" data-kind="resolume">+ Resolume</button><button data-add="${ev}" data-kind="ma">+ grandMA</button><button data-add="${ev}" data-kind="midi">+ MIDI</button></div></td>
+      <div class="act"><button data-add="${ev}" data-kind="resolume">+ Resolume</button><button data-add="${ev}" data-kind="ma2">+ grandMA2</button><button data-add="${ev}" data-kind="ma">+ grandMA OSC</button><button data-add="${ev}" data-kind="midi">+ MIDI</button></div></td>
       <td><button data-test="${ev}" title="послать пробное событие">ПРОБА</button></td></tr>`).join('')}</table>
-    <div class="row"><button class="pri" data-save>СОХРАНИТЬ НА МОСТ</button><span class="status" id="outStatus"></span><span class="muted">Подстановки в адресе и аргументах: {n}, {v}, {v127} и т. д. Адреса grandMA2 — /gma2/…</span></div>`;
+    <div class="row"><button class="pri" data-save>СОХРАНИТЬ НА МОСТ</button><span class="status" id="outStatus"></span><span class="muted">Подстановки в адресе и аргументах: {n}, {v}, {v127} и т. д. grandMA2 — командой по Telnet: Goto Cue 2 Executor 1.1</span></div>`;
   const read = () => {                                     // собрать карту из полей
     const m = {}; EVENTS.forEach(([ev]) => m[ev] = []);
     $$('#tabOut .act[data-ev]').forEach(d => {
       const f = k => d.querySelector(`[data-f=${k}]`); const type = f('type').value;
+      if (type === 'ma2') { m[d.dataset.ev].push({ ma2: f('cmd').value.trim() }); return; }
       if (type === 'midi') { const num = k => { const v = f(k) ? f(k).value.trim() : ''; return /^-?\d+$/.test(v) ? +v : v; };
         const a = { midi: [num('st') || 144, num('d1') || 0, num('d2') || 127] }; const off = f('off') && f('off').value.trim(); if (off) a.off_ms = +off; m[d.dataset.ev].push(a); }
       else m[d.dataset.ev].push({ to: type, addr: f('addr').value.trim(), args: f('args').value.split(',').map(x => x.trim()).filter(Boolean).map(x => /^-?\d+$/.test(x) ? +x : /^-?\d*\.\d+$/.test(x) ? +x : x) });
     });
     const g = k => el.querySelector(`[data-t="${k}"]`).value.trim();
-    return { ...c, targets: { resolume: { ...(c.targets.resolume || {}), host: g('resolume.host'), port: +g('resolume.port') || 7000 }, ma: { ...(c.targets.ma || {}), host: g('ma.host'), port: +g('ma.port') || 8000 } }, midi_out: g('midi_out') || null, map: m };
+    return { ...c, targets: { ...c.targets, resolume: { ...(c.targets.resolume || {}), host: g('resolume.host'), port: +g('resolume.port') || 7000 }, ma: { ...(c.targets.ma || {}), host: g('ma.host'), port: +g('ma.port') || 8000 } }, midi_out: g('midi_out') || null, map: m };
   };
   el.onclick = async e => {
     const b = e.target;
-    if (b.dataset.add) { const cur = read(); cur.map[b.dataset.add].push(b.dataset.kind === 'midi' ? { midi: [144, 1, 127], off_ms: 120 } : { to: b.dataset.kind, addr: b.dataset.kind === 'ma' ? '/gma3/cmd' : '/composition/', args: [] }); renderOut(cur); }
+    if (b.dataset.add) { const cur = read(); cur.map[b.dataset.add].push(b.dataset.kind === 'ma2' ? { ma2: 'Go+ Executor 1.1' } : b.dataset.kind === 'midi' ?{ midi: [144, 1, 127], off_ms: 120 } : { to: b.dataset.kind, addr: b.dataset.kind === 'ma' ? '/gma3/cmd' : '/composition/', args: [] }); renderOut(cur); }
     else if (b.hasAttribute('data-del')) { const d = b.closest('.act'); d.remove(); }
     else if (b.dataset.test) { const s = EVENTS.find(x => x[0] === b.dataset.test); emit({ ev: s[0].startsWith('pad') ? 'pad' : s[0], ...s[3] }); $('#outStatus').textContent = 'послано: ' + s[0]; }
     else if (b.hasAttribute('data-save')) {
