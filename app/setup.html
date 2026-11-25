@@ -24,6 +24,13 @@
   button { background: #2a2f38; color: var(--text); border: 1px solid #3a404b; border-radius: 6px; padding: 7px 14px; font: inherit; cursor: pointer; }
   button.main { background: var(--acc); border-color: var(--acc); color: #fff; font-weight: 600; }
   button:disabled { opacity: .5; cursor: default; }
+  .list { display: grid; grid-template-columns: 1fr 32px; gap: 4px; align-items: start; }   /* «+» справа от первой строки */
+  .item { display: flex; gap: 4px; grid-column: 1; }
+  .list .add { grid-column: 2; grid-row: 1; }
+  .item select { flex: 1; min-width: 0; }
+  button.x, button.add { padding: 4px 0; width: 32px; flex: none; line-height: 1.2; }
+  button.x { color: var(--dim); }
+  button.add { font-weight: 700; color: var(--acc); }
   .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   code { background: #0e1014; padding: 1px 5px; border-radius: 4px; }
   #bar { position: fixed; left: 0; right: 0; bottom: 0; background: #0b0c0f; border-top: 1px solid var(--line); padding: 10px 16px; }
@@ -34,7 +41,7 @@
 <body>
 <main>
   <h1>Привязка падов к Resolume и grandMA2</h1>
-  <p class="dim">Откройте свою композицию в Arena и шоу в MA, затем нажмите «Обновить». Каждому из 16 падов можно назначить клип и кью. Карта сохраняется в <code>tools\bridge.json</code>, мост подхватывает её сразу.</p>
+  <p class="dim">Откройте свою композицию в Arena и шоу в MA, затем нажмите «Обновить». Каждому из 16 падов можно назначить клип и кью, а кнопкой «+» — сразу несколько: пад запустит их все разом. Карта сохраняется в <code>tools\bridge.json</code>, мост подхватывает её сразу.</p>
 
   <section>
     <h2>Связь</h2>
@@ -70,29 +77,48 @@ const maOpts = () => execs.flatMap(e => [[`Go+ Executor ${e.no}`, `${e.no} ${e.n
 
 function status(el, ok, text) { el.textContent = text; el.className = 'st ' + (ok ? 'ok' : 'bad'); }
 
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// Варианты списка: kind = 'res' (клипы Arena) или 'ma' (команды grandMA2). cur — уже выбранное значение,
+// которого может не быть в открытой композиции / шоу: его показываем отдельной строкой, чтобы не потерять.
+function options(kind, cur) {
+  const list = kind === 'res' ? clips.map(c => [resAddr(c), resLabel(c)]) : maOpts();
+  return `<option value="">— нет —</option>` + list.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('')
+    + (cur && !list.some(([v]) => v === cur) ? `<option value="${esc(cur)}">${esc(cur)} (${kind === 'res' ? 'нет в композиции' : 'нет в шоу'})</option>` : '');
+}
+
+// Одна строка выбора внутри ячейки пада; у пада их может быть сколько угодно (кнопка «+»).
+function addItem(box, val) {
+  const d = document.createElement('div'); d.className = 'item';
+  d.innerHTML = `<select>${options(box.dataset.k, val)}</select><button class="x" title="Убрать">×</button>`;
+  d.querySelector('select').value = val || '';
+  box.insertBefore(d, box.lastElementChild);   // последним в ячейке стоит «+»
+  return d;
+}
+const values = box => [...new Set([...box.querySelectorAll('select')].map(s => s.value).filter(Boolean))];
+
 function render() {
-  const maList = maOpts(), body = $('#rows'); body.innerHTML = '';
+  const body = $('#rows'); body.innerHTML = '';
   PADS.forEach(([name, col], i) => {
     const acts = (cfg && cfg.map['pad' + (i + 1)]) || [];
-    const curRes = (acts.find(a => a.to === 'resolume') || {}).addr || '';
-    const curMa = (acts.find(a => a.ma2) || {}).ma2 || '';
-    const resSel = `<option value="">— нет —</option>` + clips.map(c => `<option value="${resAddr(c)}">${esc(resLabel(c))}</option>`).join('')
-      + (curRes && !clips.some(c => resAddr(c) === curRes) ? `<option value="${esc(curRes)}">${esc(curRes)} (нет в композиции)</option>` : '');
-    const maSel = `<option value="">— нет —</option>` + maList.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('')
-      + (curMa && !maList.some(([v]) => v === curMa) ? `<option value="${esc(curMa)}">${esc(curMa)} (нет в шоу)</option>` : '');
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td class="pad"><i style="background:${col}"></i>${i + 1} ${name}</td><td><select data-k="res">${resSel}</select></td>
-      <td><select data-k="ma">${maSel}</select></td><td class="hide"><button data-test="${i + 1}">Проверить</button></td>`;
-    tr.querySelector('[data-k=res]').value = curRes; tr.querySelector('[data-k=ma]').value = curMa;
+    tr.innerHTML = `<td class="pad"><i style="background:${col}"></i>${i + 1} ${name}</td>
+      <td><div class="list" data-k="res"><button class="add" title="Ещё один клип на этот пад">+</button></div></td>
+      <td><div class="list" data-k="ma"><button class="add" title="Ещё одна кью на этот пад">+</button></div></td>
+      <td class="hide"><button data-test="${i + 1}">Проверить</button></td>`;
+    const res = acts.filter(a => a.to === 'resolume').map(a => a.addr), ma = acts.filter(a => a.ma2).map(a => a.ma2);
+    (res.length ? res : ['']).forEach(v => addItem(tr.querySelector('[data-k=res]'), v));
+    (ma.length ? ma : ['']).forEach(v => addItem(tr.querySelector('[data-k=ma]'), v));
     body.appendChild(tr);
   });
 }
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 async function load() {
   $('#reload').disabled = true;
+  const draft = cfg && $('#rows').children.length ? collect().map : null;   // несохранённый выбор переживает «Обновить»
   try {
     cfg = await (await fetch(BRIDGE + '/config')).json(); status($('#sBridge'), true, 'работает');
+    if (draft) cfg.map = draft;
     const d = await (await fetch(BRIDGE + '/discover')).json();
     clips = d.resolume || []; execs = d.ma2 || [];
     status($('#sRes'), !d.resolume_error, d.resolume_error || `клипов с содержимым: ${clips.length}`);
@@ -107,12 +133,11 @@ async function load() {
 function collect() {
   const map = JSON.parse(JSON.stringify(cfg.map));
   [...$('#rows').children].forEach((tr, i) => {
-    const key = 'pad' + (i + 1), res = tr.querySelector('[data-k=res]').value, ma = tr.querySelector('[data-k=ma]').value;
+    const key = 'pad' + (i + 1), res = values(tr.querySelector('[data-k=res]')), ma = values(tr.querySelector('[data-k=ma]'));
     // старые OSC-правила grandMA3 (to: "ma") MA2 не понимает — заменяем Telnet-командой
     const keep = (map[key] || []).filter(a => a.to !== 'resolume' && a.to !== 'ma' && !a.ma2);
-    if (res) keep.unshift({ to: 'resolume', addr: res, args: [1] });
-    if (ma) keep.push({ ma2: ma });
-    map[key] = keep;
+    // у пада сколько угодно клипов и кью: мост выполняет все действия списка подряд
+    map[key] = [...res.map(addr => ({ to: 'resolume', addr, args: [1] })), ...keep, ...ma.map(cmd => ({ ma2: cmd }))];
   });
   return Object.assign({}, cfg, { map });
 }
@@ -127,10 +152,18 @@ async function save() {
 
 $('#reload').onclick = load;
 $('#save').onclick = save;
-$('#autoRes').onclick = () => [...$('#rows').children].forEach((tr, i) => { if (clips[i]) tr.querySelector('[data-k=res]').value = resAddr(clips[i]); });
-$('#autoMa').onclick = () => { const l = maOpts().filter(([v]) => v.startsWith('Goto')); [...$('#rows').children].forEach((tr, i) => { if (l[i]) tr.querySelector('[data-k=ma]').value = l[i][0]; }); };
+// «по порядку» заполняет первую строку каждого пада, добавленные плюсом не трогает
+$('#autoRes').onclick = () => [...$('#rows').children].forEach((tr, i) => { if (clips[i]) tr.querySelector('[data-k=res] select').value = resAddr(clips[i]); });
+$('#autoMa').onclick = () => { const l = maOpts().filter(([v]) => v.startsWith('Goto')); [...$('#rows').children].forEach((tr, i) => { if (l[i]) tr.querySelector('[data-k=ma] select').value = l[i][0]; }); };
 $('#rows').onclick = async e => {
-  const n = e.target.dataset.test; if (!n) return;
+  const t = e.target;
+  if (t.classList.contains('add')) { addItem(t.parentNode, '').querySelector('select').focus(); return; }
+  if (t.classList.contains('x')) {                       // последнюю строку не убираем, а очищаем
+    const box = t.closest('.list');
+    if (box.querySelectorAll('.item').length > 1) t.parentNode.remove(); else t.parentNode.querySelector('select').value = '';
+    return;
+  }
+  const n = t.dataset.test; if (!n) return;
   if (await save()) fetch(BRIDGE + '/ev', { method: 'POST', body: JSON.stringify({ ev: 'pad', n: +n, name: PADS[n - 1][0].toLowerCase() }) });
 };
 load();
