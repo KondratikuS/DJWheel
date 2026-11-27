@@ -556,7 +556,8 @@ function renderDeck() {
   const rows = [['wheel', 'Левое колесо (скретч)', p && Object.keys(p.jog || {}).join(', ') + (p && p.touch ? ' · касание ' + p.touch : '')],
     ['wheel2', 'Правое колесо (скретч)', p && p.touch2 ? 'касание ' + p.touch2 + ' (тики — в общем списке колёс)' : ''],
     ...MIDI.PAD_NAMES.map((n, i) => ['pad' + i, 'Пад ' + n, p && p.pads && p.pads[i]]),
-    ['play', 'PLAY / PAUSE', p && (p.play || p.action)], ['cue', 'CUE — следующая пара', p && p.cue],
+    ['play', 'PLAY / PAUSE — левая дека', p && (p.play || p.action)], ['cue', 'CUE (следующая пара) — левая дека', p && p.cue],
+    ['play2', 'PLAY / PAUSE — правая дека', p && p.play2], ['cue2', 'CUE (следующая пара) — правая дека', p && p.cue2],
     ...Object.entries(MIDI.CTRL).map(([k, t]) => [k, t[0] + t.slice(1).toLowerCase(), p && p[k] && `${p[k].key} · ${p[k].min}…${p[k].max}`])];
   el.innerHTML = `<div class="row"><span>Дека: <b>${devs.length ? esc(devs.join(', ')) : 'не подключена'}</b></span>
       <span class="muted">${p ? 'профиль есть' : name ? 'профиля нет — пройди мастер' : 'подключи по USB и открой заново'}</span>
